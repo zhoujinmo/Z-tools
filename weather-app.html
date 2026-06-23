@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>天气查询</title>
+  <script src="config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -230,8 +231,7 @@
   </div>
   
   <script>
-    const HEFENG_API_KEY = window.HEFENG_API_KEY || '';
-    const HEFENG_BASE_URL = window.HEFENG_BASE_URL || 'https://m667cfw6ja.re.qweatherapi.com';
+    const WEATHER_PROXY_URL = window.WEATHER_CONFIG?.WEATHER_PROXY_URL || '/weather-api';
     
     function logApiResponse(apiName, url, response, data) {
       console.group(`🌤️ [天气API] ${apiName}`);
@@ -495,7 +495,7 @@
     }
     
     async function searchCity(city) {
-      const url = `${HEFENG_BASE_URL}/v7/city/search?location=${encodeURIComponent(city)}&key=${HEFENG_API_KEY}`;
+      const url = `${WEATHER_PROXY_URL}?path=/v7/city/search&location=${encodeURIComponent(city)}`;
       
       try {
         const res = await fetch(url);
@@ -522,7 +522,7 @@
     }
     
     async function fetchCurrentWeather(locationId) {
-      const url = `${HEFENG_BASE_URL}/v7/weather/now?location=${locationId}&key=${HEFENG_API_KEY}`;
+      const url = `${WEATHER_PROXY_URL}?path=/v7/weather/now&location=${locationId}`;
       
       try {
         const res = await fetch(url);
@@ -546,7 +546,7 @@
     }
     
     async function fetchForecastWeather(locationId) {
-      const url = `${HEFENG_BASE_URL}/v7/weather/7d?location=${locationId}&key=${HEFENG_API_KEY}`;
+      const url = `${WEATHER_PROXY_URL}?path=/v7/weather/7d&location=${locationId}`;
       
       try {
         const res = await fetch(url);
@@ -867,7 +867,7 @@
     async function getCityNameByLocation(lat, lon) {
       console.log(`🌍 尝试将经纬度转换为城市: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
       
-      const url = `${HEFENG_BASE_URL}/v7/city/lookup?location=${lat},${lon}&key=${HEFENG_API_KEY}`;
+      const url = `${WEATHER_PROXY_URL}?path=/v7/city/lookup&location=${lat},${lon}`;
       
       try {
         const res = await fetch(url);

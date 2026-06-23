@@ -1,0 +1,7 @@
+[build]
+  command = "echo 'Build completed'"
+  publish = "."
+
+[[edge_functions]]
+  function = "weather-proxy"
+  path = "/weather-api"
