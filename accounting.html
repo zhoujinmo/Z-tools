@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简记 · 全能记账工具（内置自定义分类）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        income: '#10b981',
+                        expense: '#ef4444',
+                        warn: '#f59e0b',
+                        food: '#fb7185',
+                        traffic: '#6366f1',
+                        shop: '#f97316',
+                        house: '#8b5cf6',
+                        entertainment: '#14b8a6',
+                        medical: '#ec4899',
+                        salary: '#22c55e',
+                        parttime: '#84cc16',
+                        redpack: '#f43f5e',
+                        finance: '#0ea5e9',
+                        custom: '#8b5cf6',
+                        neutral: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-shadow {
+                box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+            }
+            .dark .card-shadow {
+                box-shadow: 0 1px 12px rgba(0,0,0,0.3);
+            }
+            .input-focus {
+                @apply border-neutral-300 dark:border-neutral-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-neutral-800 dark:text-white;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:opacity-90 active:scale-[0.97];
+            }
+            .cat-tag {
+                @apply flex items-center gap-1 px-2 py-1 rounded text-sm;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 min-h-screen transition-colors duration-300">
+    <div class="max-w-2xl mx-auto px-4 py-8">
+        <!-- 头部 -->
+        <header class="mb-8 flex justify-between items-start">
+            <div>
+                <a href="index.html" class="inline-flex items-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-primary mb-2 transition-colors">
+                    <i class="fa fa-arrow-left"></i>返回作品集
+                </a>
+                <h1 class="text-[26px] font-semibold flex items-center gap-2">
+                    <i class="fa fa-wallet text-primary"></i>简记
+                </h1>
+                <p class="text-neutral-500 dark:text-neutral-400 mt-1">收支记账·自定义分类·多月统计·数据备份</p>
+            </div>
+            <button id="themeToggle" class="text-xl p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 btn-hover">
+                <i class="fa fa-moon-o dark:hidden"></i>
+                <i class="fa fa-sun-o hidden dark:block"></i>
+            </button>
+        </header>
+
+        <!-- 月份选择器 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 flex items-center justify-between gap-3">
+            <button id="prevMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-left"></i></button>
+            <select id="monthSelect" class="flex-1 py-2 px-3 rounded-lg input-focus"></select>
+            <button id="nextMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-right"></i></button>
+        </section>
+
+        <!-- 预算设置卡片 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-medium text-lg"><i class="fa fa-bullseye text-warn mr-2"></i>月度预算</h3>
+                <span id="budgetWarn" class="text-expense font-medium hidden"><i class="fa fa-exclamation-circle"></i> 已超预算！</span>
+            </div>
+            <div class="flex gap-3">
+                <input type="number" id="monthBudget" placeholder="设置本月预算" min="0" step="0.01" class="flex-1 rounded-xl py-3 px-4 input-focus">
+                <button id="saveBudget" class="bg-warn text-white px-5 rounded-xl btn-hover">保存</button>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
+                <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
+                    <span class="text-neutral-500 dark:text-neutral-400">预算总额</span>
+                    <p id="budgetTotal" class="font-semibold text-lg mt-1">¥0.00</p>
+                </div>
+                <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
+                    <span class="text-neutral-500 dark:text-neutral-400">已支出</span>
+                    <p id="budgetUsed" class="font-semibold text-lg mt-1">¥0.00</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 资产总览+双图表 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月结余</p>
+                    <h2 id="balanceTotal" class="text-[32px] font-bold mt-1">¥0.00</h2>
+                </div>
+                <canvas id="pieChart" width="110" height="110"></canvas>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
+                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月收入</p>
+                    <p id="monthIncome" class="text-income text-xl font-semibold mt-1">¥0.00</p>
+                </div>
+                <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
+                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月支出</p>
+                    <p id="monthExpense" class="text-expense text-xl font-semibold mt-1">¥0.00</p>
+                </div>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-2">支出分类统计</p>
+                <canvas id="barChart" height="160"></canvas>
+            </div>
+        </section>
+
+        <!-- 新增账单表单 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+            <h3 class="font-medium text-lg mb-4">新增记录</h3>
+            <form id="billForm" class="space-y-4">
+                <!-- 收支类型切换 -->
+                <div class="flex gap-3">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="type" value="income" class="hidden peer" checked>
+                        <div class="peer-checked:bg-income peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
+                            <i class="fa fa-plus mr-1"></i>收入
+                        </div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="type" value="expense" class="hidden peer">
+                        <div class="peer-checked:bg-expense peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
+                            <i class="fa fa-minus mr-1"></i>支出
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 金额 -->
+                <div>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">金额</label>
+                    <input type="number" step="0.01" min="0.01" id="amount" placeholder="输入金额" required class="w-full border rounded-xl px-4 py-3 input-focus">
+                </div>
+
+                <!-- 收入分类面板 -->
+                <div id="incomeCatWrap">
+                    <label class="text-sm text-income font-medium block mb-2"><i class="fa fa-money mr-1"></i>收入分类</label>
+                    <div id="incomeCatBox" class="grid grid-cols-2 gap-2 mb-3">
+                        <!-- 动态渲染收入分类 -->
+                    </div>
+                    <!-- 自定义收入输入区域（替换原其他收入） -->
+                    <div class="flex gap-2">
+                        <input id="newIncomeCat" placeholder="添加自定义收入分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
+                        <button type="button" id="addIncomeCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
+                    </div>
+                </div>
+
+                <!-- 支出分类面板 -->
+                <div id="expenseCatWrap" class="hidden">
+                    <label class="text-sm text-expense font-medium block mb-2"><i class="fa fa-shopping-cart mr-1"></i>支出分类</label>
+                    <div id="expenseCatBox" class="grid grid-cols-2 gap-2 mb-3">
+                        <!-- 动态渲染支出分类 -->
+                    </div>
+                    <!-- 自定义支出输入区域（替换原其他支出） -->
+                    <div class="flex gap-2">
+                        <input id="newExpenseCat" placeholder="添加自定义支出分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
+                        <button type="button" id="addExpenseCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
+                    </div>
+                </div>
+
+                <!-- 备注 -->
+                <div>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">备注（选填）</label>
+                    <input type="text" id="remark" placeholder="简单备注这笔开销" class="w-full border rounded-xl px-4 py-3 input-focus">
+                </div>
+
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-medium btn-hover">保存记录</button>
+            </form>
+        </section>
+
+        <!-- 操作工具栏：导出/备份/导入/清空 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 grid grid-cols-2 gap-3">
+            <button id="exportExcel" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-file-excel-o text-income mr-1"></i>导出Excel</button>
+            <button id="exportJson" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-download text-primary mr-1"></i>备份数据</button>
+            <label class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-center cursor-pointer btn-hover block">
+                <i class="fa fa-upload text-warn mr-1"></i>导入备份
+                <input type="file" id="importJson" accept=".json" class="hidden">
+            </label>
+            <button id="clearAll" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-trash text-expense mr-1"></i>清空全部</button>
+        </section>
+
+        <!-- 账单列表 -->
+        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow">
+            <h3 class="font-medium text-lg mb-4">账单明细</h3>
+            <div id="billList" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                <div class="text-center py-10 text-neutral-400">
+                    <i class="fa fa-file-text-o text-3xl block mb-2"></i>暂无账单记录
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 存储常量
+        const STORAGE_KEY = 'simple-bill-data';
+        const THEME_KEY = 'bill-theme';
+        const BUDGET_KEY = 'bill-budget';
+        const CUSTOM_CAT_KEY = 'bill-custom-category';
+        let pieChart = null;
+        let barChart = null;
+        let currentSelectYM = '';
+
+        // 系统内置分类（已移除「其他」，纯固定系统分类）
+        const systemCategory = {
+            income: [
+                { name: "工资", icon: "fa-briefcase", color: "salary" },
+                { name: "兼职", icon: "fa-coffee", color: "parttime" },
+                { name: "红包礼金", icon: "fa-gift", color: "redpack" },
+                { name: "理财收益", icon: "fa-line-chart", color: "finance" }
+            ],
+            expense: [
+                { name: "餐饮美食", icon: "fa-cutlery", color: "food" },
+                { name: "交通出行", icon: "fa-car", color: "traffic" },
+                { name: "购物消费", icon: "fa-shopping-bag", color: "shop" },
+                { name: "住房房租", icon: "fa-home", color: "house" },
+                { name: "休闲娱乐", icon: "fa-gamepad", color: "entertainment" },
+                { name: "医疗健康", icon: "fa-heartbeat", color: "medical" }
+            ]
+        };
+
+        // 读取本地自定义分类
+        function getCustomCategory() {
+            const raw = localStorage.getItem(CUSTOM_CAT_KEY);
+            if (!raw) return { income: [], expense: [] };
+            return JSON.parse(raw);
+        }
+        // 保存自定义分类
+        function saveCustomCategory(obj) {
+            localStorage.setItem(CUSTOM_CAT_KEY, JSON.stringify(obj));
+        }
+        // 删除单条自定义分类
+        function delCustomCat(type, name) {
+            const custom = getCustomCategory();
+            custom[type] = custom[type].filter(item => item.name !== name);
+            saveCustomCategory(custom);
+            renderCatPanel();
+        }
+
+        // 整合系统分类+自定义分类
+        function getAllCategory(type) {
+            const sys = [...systemCategory[type]];
+            const custom = getCustomCategory()[type].map(item => ({
+                name: item.name,
+                icon: "fa-tag",
+                color: "custom",
+                isCustom: true
+            }));
+            return [...sys, ...custom];
+        }
+
+        // 分类图标映射（账单列表渲染用）
+        function getCatIcon(name, type) {
+            const all = getAllCategory(type);
+            const find = all.find(c => c.name === name);
+            return find ? find.icon : "fa-file-o";
+        }
+
+        // ========== 本地存储工具 ==========
+        function getBills() {
+            const d = localStorage.getItem(STORAGE_KEY);
+            return d ? JSON.parse(d) : [];
+        }
+        function saveBills(list) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        }
+        function setTheme(isDark) {
+            if(isDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+        }
+        function loadTheme() {
+            const t = localStorage.getItem(THEME_KEY);
+            setTheme(t === 'dark');
+        }
+        function saveBudget(ym, num) {
+            const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}');
+            budgetObj[ym] = Number(num);
+            localStorage.setItem(BUDGET_KEY, JSON.stringify(budgetObj));
+        }
+        function getBudget(ym) {
+            const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}');
+            return budgetObj[ym] || 0;
+        }
+
+        // ========== 工具函数 ==========
+        function getCurrentYM() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        }
+        function formatMoney(n) {
+            return '¥' + Number(n).toFixed(2);
+        }
+        function parseYM(ym) {
+            const [y, m] = ym.split('-').map(Number);
+            return { year: y, month: m };
+        }
+        function addMonth(ym, step) {
+            let { year, month } = parseYM(ym);
+            month += step;
+            while(month > 12) { year++; month -=12; }
+            while(month < 1) { year--; month +=12; }
+            return `${year}-${String(month).padStart(2,'0')}`;
+        }
+        function getAllYMList() {
+            const bills = getBills();
+            const ymSet = new Set();
+            bills.forEach(item => ymSet.add(item.date.slice(0,7)));
+            const list = Array.from(ymSet).sort().reverse();
+            const nowYM = getCurrentYM();
+            if(!list.includes(nowYM)) list.unshift(nowYM);
+            return list;
+        }
+        function getMonthBills(ym) {
+            return getBills().filter(item => item.date.startsWith(ym));
+        }
+
+        // 切换收入/支出分类面板
+        function switchCatPanel(type) {
+            const incomeWrap = document.getElementById('incomeCatWrap');
+            const expenseWrap = document.getElementById('expenseCatWrap');
+            if(type === 'income') {
+                incomeWrap.classList.remove('hidden');
+                expenseWrap.classList.add('hidden');
+                const first = getAllCategory('income')[0];
+                document.querySelector(`input[name="category"][value="${first.name}"]`).checked = true;
+            } else {
+                incomeWrap.classList.add('hidden');
+                expenseWrap.classList.remove('hidden');
+                const first = getAllCategory('expense')[0];
+                document.querySelector(`input[name="category"][value="${first.name}"]`).checked = true;
+            }
+        }
+
+        // 渲染分类选择面板
+        function renderCatPanel() {
+            const incomeBox = document.getElementById('incomeCatBox');
+            const expenseBox = document.getElementById('expenseCatBox');
+            // 渲染收入
+            let incomeHtml = '';
+            getAllCategory('income').forEach(cat => {
+                incomeHtml += `
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between">
+                    <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
+                    ${cat.isCustom ? `<button data-type="income" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
+                </label>
+                `;
+            });
+            incomeBox.innerHTML = incomeHtml;
+            // 渲染支出
+            let expenseHtml = '';
+            getAllCategory('expense').forEach(cat => {
+                expenseHtml += `
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between">
+                    <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
+                    ${cat.isCustom ? `<button data-type="expense" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
+                </label>
+                `;
+            });
+            expenseBox.innerHTML = expenseHtml;
+
+            // 绑定删除自定义分类按钮
+            document.querySelectorAll('.del-custom-cat').forEach(btn=>{
+                btn.onclick = function(e){
+                    e.preventDefault();
+                    const type = this.dataset.type;
+                    const name = this.dataset.name;
+                    if(confirm(`确定删除自定义分类「${name}」？历史账单保留，仅移除分类选项`)){
+                        delCustomCat(type, name);
+                    }
+                }
+            })
+        }
+
+        // 添加自定义分类
+        function addCustomCat(type) {
+            const inputEl = type === 'income' ? document.getElementById('newIncomeCat') : document.getElementById('newExpenseCat');
+            const name = inputEl.value.trim();
+            if(!name) return alert('请输入分类名称');
+            // 校验重名
+            const allNames = getAllCategory(type).map(c=>c.name);
+            if(allNames.includes(name)) return alert('该分类名称已存在！');
+            // 保存
+            const custom = getCustomCategory();
+            custom[type].push({ name });
+            saveCustomCategory(custom);
+            renderCatPanel();
+            inputEl.value = '';
+        }
+
+        // ========== 渲染月份下拉选择器 ==========
+        function renderMonthSelect() {
+            const sel = document.getElementById('monthSelect');
+            const ymList = getAllYMList();
+            sel.innerHTML = '';
+            ymList.forEach(ym=>{
+                const opt = document.createElement('option');
+                opt.value = ym;
+                opt.textContent = ym;
+                sel.appendChild(opt);
+            })
+            if(!currentSelectYM || !ymList.includes(currentSelectYM)) currentSelectYM = getCurrentYM();
+            sel.value = currentSelectYM;
+        }
+
+        // ========== 预算计算与超支提醒 ==========
+        function calcBudgetStat(ym) {
+            const budgetVal = getBudget(ym);
+            const monthBills = getMonthBills(ym);
+            let used = 0;
+            monthBills.forEach(i=>{ if(i.type==='expense') used += Number(i.amount); })
+            document.getElementById('monthBudget').value = budgetVal;
+            document.getElementById('budgetTotal').textContent = formatMoney(budgetVal);
+            document.getElementById('budgetUsed').textContent = formatMoney(used);
+            const warnDom = document.getElementById('budgetWarn');
+            if(budgetVal > 0 && used > budgetVal) warnDom.classList.remove('hidden');
+            else warnDom.classList.add('hidden');
+        }
+
+        // ========== 统计、饼图、柱状图 ==========
+        function renderStatsAndChart(ym) {
+            const bills = getMonthBills(ym);
+            let income = 0, expense = 0;
+            const categoryMap = {};
+            // 初始化所有支出分类
+            getAllCategory('expense').forEach(c=>categoryMap[c.name] = 0);
+            bills.forEach(item=>{
+                const num = Number(item.amount);
+                if(item.type === 'income') income += num;
+                else {
+                    expense += num;
+                    if(categoryMap[item.category] !== undefined) categoryMap[item.category] += num;
+                }
+            })
+            const balance = income - expense;
+            document.getElementById('balanceTotal').textContent = formatMoney(balance);
+            document.getElementById('monthIncome').textContent = formatMoney(income);
+            document.getElementById('monthExpense').textContent = formatMoney(expense);
+
+            // 收支饼图
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            if(pieChart) pieChart.destroy();
+            pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['收入','支出'],
+                    datasets: [{data:[income,expense],backgroundColor:['#10b981','#ef4444'],borderWidth:0}]
+                },
+                options:{cutout:'70%',plugins:{legend:{display:false}},maintainAspectRatio:false}
+            })
+
+            // 支出分类柱状图
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            if(barChart) barChart.destroy();
+            const catLabels = Object.keys(categoryMap);
+            const catData = Object.values(categoryMap);
+            barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{label:'支出金额',data:catData,backgroundColor:'#3b82f6',borderRadius:6}]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{legend:{display:false}},
+                    scales:{
+                        x:{grid:{display:false},ticks:{color:document.documentElement.classList.contains('dark')?'#ccc':'#333'}},
+                        y:{grid:{color:document.documentElement.classList.contains('dark')?'#333':'#eee'},ticks:{color:document.documentElement.classList.contains('dark')?'#ccc':'#333'}}
+                    }
+                }
+            })
+        }
+
+        // ========== 账单列表渲染（带分类图标） ==========
+        function renderBillList(ym) {
+            const wrap = document.getElementById('billList');
+            const bills = getMonthBills(ym);
+            if(bills.length === 0) {
+                wrap.innerHTML = `<div class="text-center py-10 text-neutral-400"><i class="fa fa-file-text-o text-3xl block mb-2"></i>当月暂无账单</div>`;
+                return;
+            }
+            bills.sort((a,b)=>new Date(b.time)-new Date(a.time));
+            let html = '';
+            bills.forEach(item=>{
+                const colorCls = item.type==='income'?'text-income':'text-expense';
+                const sign = item.type==='income'?'+':'-';
+                const icon = getCatIcon(item.category, item.type);
+                html += `
+                <div class="flex items-center justify-between bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-600">
+                            <i class="fa ${icon}"></i>
+                        </span>
+                        <div>
+                            <p class="font-medium">${item.category}</p>
+                            <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">${item.date} ${item.remark||'无备注'}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="${colorCls} font-semibold">${sign}${formatMoney(item.amount)}</span>
+                        <button data-date="${item.date}" data-time="${item.time}" class="del-btn text-neutral-400 hover:text-expense btn-hover">
+                            <i class="fa fa-trash-o"></i>
+                        </button>
+                    </div>
+                </div>`;
+            })
+            wrap.innerHTML = html;
+            document.querySelectorAll('.del-btn').forEach(btn=>{
+                btn.onclick = function(){
+                    const delDate = this.dataset.date;
+                    const delTime = Number(this.dataset.time);
+                    const all = getBills().filter(i=>!(i.date===delDate && i.time===delTime));
+                    saveBills(all);
+                    refreshAll();
+                }
+            })
+        }
+
+        // ========== 全局刷新 ==========
+        function refreshAll() {
+            renderMonthSelect();
+            renderCatPanel();
+            calcBudgetStat(currentSelectYM);
+            renderStatsAndChart(currentSelectYM);
+            renderBillList(currentSelectYM);
+        }
+
+        // ========== Excel导出功能 ==========
+        function exportToExcel() {
+            const all = getBills();
+            if(all.length === 0) return alert('暂无账单可导出');
+            const sheetData = [['日期','类型','分类','金额','备注']];
+            all.forEach(item=>{
+                sheetData.push([
+                    item.date,
+                    item.type==='income'?'收入':'支出',
+                    item.category,
+                    Number(item.amount).toFixed(2),
+                    item.remark||''
+                ])
+            })
+            const book = XLSX.utils.book_new();
+            const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(book, sheet, '账单明细');
+            XLSX.writeFile(book, `账单记录_${new Date().toLocaleDateString()}.xlsx`);
+        }
+
+        // ========== JSON备份与导入 ==========
+        function exportJsonBackup() {
+            const dataStr = JSON.stringify({
+                bills: getBills(),
+                customCategory: getCustomCategory()
+            }, null, 2);
+            const blob = new Blob([dataStr], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `记账完整备份_${getCurrentYM()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        function importJsonFile(file) {
+            const reader = new FileReader();
+            reader.onload = e=>{
+                try {
+                    const raw = JSON.parse(e.target.result);
+                    if(!raw.bills || !Array.isArray(raw.bills)) throw Error('文件格式错误');
+                    saveBills(raw.bills);
+                    if(raw.customCategory) saveCustomCategory(raw.customCategory);
+                    alert('导入成功！账单与自定义分类已恢复');
+                    refreshAll();
+                } catch(err) {
+                    alert('导入失败，备份文件损坏');
+                }
+            }
+            reader.readAsText(file);
+        }
+
+        // ========== 绑定页面事件 ==========
+        function bindEvents() {
+            // 主题切换
+            document.getElementById('themeToggle').onclick = ()=>{
+                const isDark = document.documentElement.classList.contains('dark');
+                setTheme(!isDark);
+                refreshAll();
+            }
+            // 月份切换
+            const monthSel = document.getElementById('monthSelect');
+            monthSel.onchange = ()=>{
+                currentSelectYM = monthSel.value;
+                refreshAll();
+            }
+            document.getElementById('prevMonth').onclick = ()=>{
+                currentSelectYM = addMonth(currentSelectYM, -1);
+                refreshAll();
+            }
+            document.getElementById('nextMonth').onclick = ()=>{
+                currentSelectYM = addMonth(currentSelectYM, 1);
+                refreshAll();
+            }
+            // 预算保存
+            document.getElementById('saveBudget').onclick = ()=>{
+                const val = document.getElementById('monthBudget').value || 0;
+                saveBudget(currentSelectYM, val);
+                refreshAll();
+            }
+            // 收入/支出切换
+            document.querySelectorAll('input[name="type"]').forEach(radio=>{
+                radio.onchange = function(){
+                    switchCatPanel(this.value);
+                }
+            })
+            // 添加自定义分类按钮
+            document.getElementById('addIncomeCatBtn').onclick = ()=> addCustomCat('income');
+            document.getElementById('addExpenseCatBtn').onclick = ()=> addCustomCat('expense');
+            // 回车快速添加自定义分类
+            document.getElementById('newIncomeCat').onkeydown = e=>{if(e.key==='Enter') addCustomCat('income')};
+            document.getElementById('newExpenseCat').onkeydown = e=>{if(e.key==='Enter') addCustomCat('expense')};
+            // 新增账单表单提交
+            document.getElementById('billForm').onsubmit = e=>{
+                e.preventDefault();
+                const type = document.querySelector('input[name="type"]:checked').value;
+                const amount = document.getElementById('amount').value;
+                const category = document.querySelector('input[name="category"]:checked').value;
+                const remark = document.getElementById('remark').value.trim();
+                const now = new Date();
+                const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                const newItem = { type, amount, category, remark, date, time: now.getTime() };
+                const list = getBills();
+                list.push(newItem);
+                saveBills(list);
+                document.getElementById('billForm').reset();
+                switchCatPanel('income');
+                refreshAll();
+            }
+            // 导出Excel
+            document.getElementById('exportExcel').onclick = exportToExcel;
+            // 导出完整备份（含自定义分类）
+            document.getElementById('exportJson').onclick = exportJsonBackup;
+            // 导入JSON
+            document.getElementById('importJson').onchange = e=>{
+                const f = e.target.files[0];
+                if(f) importJsonFile(f);
+            }
+            // 清空全部
+            document.getElementById('clearAll').onclick = ()=>{
+                if(confirm('确定清空所有账单+自定义分类？数据无法恢复！')) {
+                    saveBills([]);
+                    localStorage.removeItem(BUDGET_KEY);
+                    localStorage.removeItem(CUSTOM_CAT_KEY);
+                    refreshAll();
+                }
+            }
+        }
+
+        // 初始化
+        loadTheme();
+        currentSelectYM = getCurrentYM();
+        bindEvents();
+        renderCatPanel();
+        switchCatPanel('income');
+        refreshAll();
+    </script>
+</body>
+</html>
