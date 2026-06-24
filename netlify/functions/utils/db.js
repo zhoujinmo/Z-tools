@@ -1,12 +1,20 @@
 const initSqlJs = require('sql.js');
+const path = require('path');
 
 let db = null;
 
 async function getDB() {
   if (db) return db;
   
+  const wasmPath = path.join(__dirname, 'dist', 'sql-wasm.wasm');
+  
   const SQL = await initSqlJs({
-    locateFile: file => `https://sql.js.org/dist/${file}`
+    locateFile: file => {
+      if (file === 'sql-wasm.wasm') {
+        return wasmPath;
+      }
+      return file;
+    }
   });
   
   db = new SQL.Database();
