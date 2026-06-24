@@ -18,135 +18,103 @@ function errorResponse(message, statusCode = 400) {
 }
 
 exports.handler = async (event) => {
-  const authResult = await authenticate(event);
-  if (!authResult.success) {
-    return errorResponse(authResult.error, 401);
-  }
-
-  const userId = authResult.user.userId;
-  const { httpMethod, path } = event;
-  const endpoint = path.replace('/api/sync/', '');
-
-  if (httpMethod === 'GET' && endpoint === 'status') {
-    return handleGetStatus(userId);
-  }
-
-  if (httpMethod === 'POST' && endpoint === 'pull') {
-    return handlePull(userId, event);
-  }
-
-  if (httpMethod === 'POST' && endpoint === 'push') {
-    return handlePush(userId, event);
-  }
-
-  if (httpMethod === 'POST' && endpoint === 'full-sync') {
-    return handleFullSync(userId);
-  }
-
-  return errorResponse('方法不支持', 405);
-};
-
-function handleGetStatus(userId) {
   try {
-    const syncRecord = getSyncRecord(userId);
-    
-    return successResponse({ 
-      data: { 
-        lastSyncTime: syncRecord?.last_sync_time || null, 
-        syncToken: syncRecord?.sync_token || null 
-      } 
-    });
-  } catch (err) {
-    return errorResponse('获取同步状态失败: ' + err.message, 500);
-  }
-}
-
-function handlePull(userId, event) {
-  try {
-    const { lastSyncTime, ledgerId } = JSON.parse(event.body);
-    
-    let transactions = [];
-    if (ledgerId) {
-      transactions = getTransactionsByLedger(ledgerId);
-    } else {
-      transactions = getAllUserTransactions(userId);
+    const authResult = await authenticate(event);
+    if (!authResult.success) {
+      return errorResponse(authResult.error, 401);
     }
 
-    if (lastSyncTime) {
-      transactions = transactions.filter(t => t.updated_at > lastSyncTime);
-    }
+    const userId = authResult.user.userId;
+    const { httpMethod, path } = event;
+    const endpoint = path.replace('/api/sync/', '');
 
-    const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
-
-    return successResponse({ data: transactions, syncTime });
-  } catch (err) {
-    return errorResponse('拉取数据失败: ' + err.message, 500);
-  }
-}
-
-function handlePush(userId, event) {
-  try {
-    const { transactions } = JSON.parse(event.body);
-    
-    if (!transactions || !Array.isArray(transactions)) {
-      return errorResponse('无效的数据格式');
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const item of transactions) {
-      try {
-        const ledger = getLedgerById(item.ledgerId);
-        if (!ledger || ledger.user_id !== userId) {
-          errorCount++;
-          continue;
+    if (httpMethod === 'GET' && endpoint === 'status') {
+      const syncRecord = await getSyncRecord(userId);
+      return successResponse({
+        data: {
+          lastSyncTime: syncRecord?.last_sync_time || null,
+          syncToken: syncRecord?.sync_token || null
         }
+      });
+    }
 
-        const existing = getTransactionsByLedger(item.ledgerId);
-        const found = existing.find(t => t.date === item.date && t.time === item.time);
-        
-        if (found) {
-          updateTransaction(found.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
-        } else {
-          createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
-        }
-        successCount++;
-      } catch (err) {
-        errorCount++;
+    if (httpMethod === 'POST' && endpoint === 'pull') {
+      const { lastSyncTime, ledgerId } = JSON.parse(event.body);
+
+      let transactions = [];
+      if (ledgerId) {
+        transactions = await getTransactionsByLedger(ledgerId);
+      } else {
+        transactions = await getAllUserTransactions(userId);
       }
+
+      if (lastSyncTime) {
+        transactions = transactions.filter(t => t.updated_at > lastSyncTime);
+      }
+
+      const syncTime = new Date().toISOString();
+      await upsertSyncRecord(userId, syncTime);
+
+      return successResponse({ data: transactions, syncTime });
     }
 
-    const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
+    if (httpMethod === 'POST' && endpoint === 'push') {
+      const { transactions } = JSON.parse(event.body);
 
-    return successResponse({
-      message: `同步完成: 成功 ${successCount}, 失败 ${errorCount}`,
-      stats: { success: successCount, error: errorCount },
-      syncTime
-    });
+      if (!transactions || !Array.isArray(transactions)) {
+        return errorResponse('无效的数据格式');
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const item of transactions) {
+        try {
+          const ledger = await getLedgerById(item.ledgerId);
+          if (!ledger || ledger.user_id !== userId) {
+            errorCount++;
+            continue;
+          }
+
+          const existing = await getTransactionsByLedger(item.ledgerId);
+          const found = existing.find(t => t.date === item.date && t.time === item.time);
+
+          if (found) {
+            await updateTransaction(found.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
+          } else {
+            await createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
+          }
+          successCount++;
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      const syncTime = new Date().toISOString();
+      await upsertSyncRecord(userId, syncTime);
+
+      return successResponse({
+        message: `同步完成: 成功 ${successCount}, 失败 ${errorCount}`,
+        stats: { success: successCount, error: errorCount },
+        syncTime
+      });
+    }
+
+    if (httpMethod === 'POST' && endpoint === 'full-sync') {
+      const ledgers = await getLedgersByUserId(userId);
+      const transactions = await getAllUserTransactions(userId);
+
+      const syncTime = new Date().toISOString();
+      await upsertSyncRecord(userId, syncTime);
+
+      return successResponse({
+        data: { ledgers, transactions },
+        syncTime
+      });
+    }
+
+    return errorResponse('方法不支持', 405);
   } catch (err) {
-    return errorResponse('推送数据失败: ' + err.message, 500);
+    return errorResponse('服务器错误: ' + err.message, 500);
   }
-}
-
-function handleFullSync(userId) {
-  try {
-    const ledgers = getLedgersByUserId(userId);
-    const transactions = getAllUserTransactions(userId);
-
-    const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
-
-    return successResponse({
-      data: {
-        ledgers,
-        transactions
-      },
-      syncTime
-    });
-  } catch (err) {
-    return errorResponse('获取完整数据失败: ' + err.message, 500);
-  }
-}
+};

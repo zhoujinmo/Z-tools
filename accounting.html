@@ -744,6 +744,8 @@
                 const ledgers = await apiRequest('/ledgers', 'GET');
                 if (ledgers.success && ledgers.data.length > 0) {
                     currentLedgerId = ledgers.data[0].id;
+                    saveBills([]);
+                    lastSyncTime = null;
                     await syncPull();
                 }
             } catch (e) {
@@ -759,27 +761,32 @@
                     ledgerId: currentLedgerId 
                 });
                 if (result.success) {
-                    const localBills = getBills();
                     const serverBills = result.data;
+                    const pulledBills = serverBills.map(serverBill => ({
+                        id: serverBill.id,
+                        type: serverBill.type,
+                        category: serverBill.category,
+                        amount: serverBill.amount,
+                        remark: serverBill.remark,
+                        date: serverBill.date,
+                        time: serverBill.time
+                    }));
+
+                    if (!lastSyncTime) {
+                        saveBills(pulledBills);
+                    } else {
+                        const localBills = getBills();
+                        pulledBills.forEach(serverBill => {
+                            const exists = localBills.find(b => 
+                                b.date === serverBill.date && b.time === serverBill.time
+                            );
+                            if (!exists) {
+                                localBills.push(serverBill);
+                            }
+                        });
+                        saveBills(localBills);
+                    }
                     
-                    serverBills.forEach(serverBill => {
-                        const exists = localBills.find(b => 
-                            b.date === serverBill.date && b.time === serverBill.time
-                        );
-                        if (!exists) {
-                            localBills.push({
-                                id: serverBill.id,
-                                type: serverBill.type,
-                                category: serverBill.category,
-                                amount: serverBill.amount,
-                                remark: serverBill.remark,
-                                date: serverBill.date,
-                                time: serverBill.time
-                            });
-                        }
-                    });
-                    
-                    saveBills(localBills);
                     lastSyncTime = result.syncTime;
                     updateSyncStatus();
                     refreshAll();

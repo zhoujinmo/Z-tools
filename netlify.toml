@@ -2,6 +2,9 @@
   command = "npm run build"
   publish = "."
 
+[functions]
+  directory = "netlify/functions"
+
 [[edge_functions]]
   function = "weather-proxy"
   path = "/weather-api"

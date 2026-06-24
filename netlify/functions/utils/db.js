@@ -1,144 +1,166 @@
-let db = {
-  users: [],
-  ledgers: [],
-  transactions: [],
-  sync_records: []
-};
+const { createClient } = require('@supabase/supabase-js');
 
-let userIdCounter = 1;
-let ledgerIdCounter = 1;
-let transactionIdCounter = 1;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-function initDB() {
-  db = {
-    users: [],
-    ledgers: [],
-    transactions: [],
-    sync_records: []
-  };
-}
+let supabase = null;
 
-function getUserByUsername(username) {
-  return db.users.find(u => u.username === username);
-}
-
-function getUserById(id) {
-  return db.users.find(u => u.id === id);
-}
-
-function createUser(username, password, email) {
-  const user = {
-    id: userIdCounter++,
-    username,
-    password,
-    email,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-  db.users.push(user);
-  return user;
-}
-
-function createLedger(userId, name, description) {
-  const ledger = {
-    id: ledgerIdCounter++,
-    user_id: userId,
-    name,
-    description: description || '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-  db.ledgers.push(ledger);
-  return ledger;
-}
-
-function getLedgersByUserId(userId) {
-  return db.ledgers.filter(l => l.user_id === userId);
-}
-
-function getLedgerById(id) {
-  return db.ledgers.find(l => l.id === id);
-}
-
-function updateLedger(id, name, description) {
-  const ledger = getLedgerById(id);
-  if (ledger) {
-    ledger.name = name;
-    ledger.description = description || '';
-    ledger.updated_at = new Date().toISOString();
+function getDB() {
+  if (!supabase) {
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables');
+    }
+    supabase = createClient(supabaseUrl, supabaseKey);
   }
-  return ledger;
+  return supabase;
 }
 
-function deleteLedger(id) {
-  const index = db.ledgers.findIndex(l => l.id === id);
-  if (index > -1) {
-    db.ledgers.splice(index, 1);
-    db.transactions = db.transactions.filter(t => t.ledger_id !== id);
-    return true;
-  }
-  return false;
+async function getUserByUsername(username) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 }
 
-function createTransaction(ledgerId, type, category, amount, remark, date, time) {
-  const transaction = {
-    id: transactionIdCounter++,
-    ledger_id: ledgerId,
-    type,
-    category,
-    amount: parseFloat(amount),
-    remark: remark || '',
-    date,
-    time: parseInt(time),
-    sync_status: 'pending',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-  db.transactions.push(transaction);
-  return transaction;
+async function getUserById(id) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 }
 
-function getTransactionsByLedger(ledgerId, month) {
-  let result = db.transactions.filter(t => t.ledger_id === ledgerId);
+async function createUser(username, password, email) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('users')
+    .insert({ username, password, email })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function createLedger(userId, name, description) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('ledgers')
+    .insert({ user_id: userId, name, description: description || '' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function getLedgersByUserId(userId) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('ledgers')
+    .select('*')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return data;
+}
+
+async function getLedgerById(id) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('ledgers')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+async function updateLedger(id, name, description) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('ledgers')
+    .update({ name, description: description || '', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteLedger(id) {
+  const db = getDB();
+  await db.from('transactions').delete().eq('ledger_id', id);
+  const { error } = await db.from('ledgers').delete().eq('id', id);
+  if (error) throw error;
+  return true;
+}
+
+async function createTransaction(ledgerId, type, category, amount, remark, date, time) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .insert({
+      ledger_id: ledgerId,
+      type,
+      category,
+      amount: parseFloat(amount),
+      remark: remark || '',
+      date,
+      time: parseInt(time)
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function getTransactionsByLedger(ledgerId, month) {
+  const db = getDB();
+  let query = db.from('transactions').select('*').eq('ledger_id', ledgerId);
   if (month) {
-    result = result.filter(t => t.date.startsWith(month));
+    query = query.like('date', `${month}%`);
   }
-  return result.sort((a, b) => {
-    const dateCompare = b.date.localeCompare(a.date);
-    return dateCompare !== 0 ? dateCompare : b.time - a.time;
-  });
+  const { data, error } = await query.order('date', { ascending: false }).order('time', { ascending: false });
+  if (error) throw error;
+  return data;
 }
 
-function updateTransaction(id, type, category, amount, remark, date, time) {
-  const transaction = db.transactions.find(t => t.id === id);
-  if (transaction) {
-    transaction.type = type;
-    transaction.category = category;
-    transaction.amount = parseFloat(amount);
-    transaction.remark = remark || '';
-    transaction.date = date;
-    transaction.time = parseInt(time);
-    transaction.updated_at = new Date().toISOString();
-  }
-  return transaction;
+async function updateTransaction(id, type, category, amount, remark, date, time) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .update({
+      type,
+      category,
+      amount: parseFloat(amount),
+      remark: remark || '',
+      date,
+      time: parseInt(time),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-function deleteTransaction(id) {
-  const index = db.transactions.findIndex(t => t.id === id);
-  if (index > -1) {
-    db.transactions.splice(index, 1);
-    return true;
-  }
-  return false;
+async function deleteTransaction(id) {
+  const db = getDB();
+  const { error } = await db.from('transactions').delete().eq('id', id);
+  if (error) throw error;
+  return true;
 }
 
-function getTransactionStats(ledgerId, month) {
-  let filtered = db.transactions.filter(t => t.ledger_id === ledgerId);
-  if (month) {
-    filtered = filtered.filter(t => t.date.startsWith(month));
-  }
+async function getTransactionStats(ledgerId, month) {
+  const transactions = await getTransactionsByLedger(ledgerId, month);
   const stats = { income: 0, expense: 0 };
-  filtered.forEach(t => {
+  transactions.forEach(t => {
     if (t.type === 'income') {
       stats.income += t.amount;
     } else {
@@ -148,33 +170,54 @@ function getTransactionStats(ledgerId, month) {
   return stats;
 }
 
-function upsertSyncRecord(userId, lastSyncTime) {
-  const existing = db.sync_records.find(r => r.user_id === userId);
+async function upsertSyncRecord(userId, lastSyncTime) {
+  const db = getDB();
+  const { data: existing } = await db
+    .from('sync_records')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
   if (existing) {
-    existing.last_sync_time = lastSyncTime;
+    const { error } = await db
+      .from('sync_records')
+      .update({ last_sync_time: lastSyncTime })
+      .eq('user_id', userId);
+    if (error) throw error;
   } else {
-    db.sync_records.push({
-      id: db.sync_records.length + 1,
-      user_id: userId,
-      last_sync_time: lastSyncTime,
-      sync_token: null,
-      created_at: new Date().toISOString()
-    });
+    const { error } = await db
+      .from('sync_records')
+      .insert({ user_id: userId, last_sync_time: lastSyncTime });
+    if (error) throw error;
   }
 }
 
-function getSyncRecord(userId) {
-  return db.sync_records.find(r => r.user_id === userId);
+async function getSyncRecord(userId) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('sync_records')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 }
 
-function getAllUserTransactions(userId) {
-  const userLedgers = getLedgersByUserId(userId);
-  const ledgerIds = userLedgers.map(l => l.id);
-  return db.transactions.filter(t => ledgerIds.includes(t.ledger_id));
+async function getAllUserTransactions(userId) {
+  const ledgers = await getLedgersByUserId(userId);
+  const ledgerIds = ledgers.map(l => l.id);
+  if (ledgerIds.length === 0) return [];
+  
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .select('*')
+    .in('ledger_id', ledgerIds);
+  if (error) throw error;
+  return data;
 }
 
 module.exports = {
-  initDB,
   getUserByUsername,
   getUserById,
   createUser,
@@ -190,6 +233,5 @@ module.exports = {
   getTransactionStats,
   upsertSyncRecord,
   getSyncRecord,
-  getAllUserTransactions,
-  db
+  getAllUserTransactions
 };
