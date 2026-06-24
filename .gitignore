@@ -22,3 +22,13 @@ node_modules/
 
 # Netlify
 .netlify/
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Database (legacy)
+database/
+*.sqlite

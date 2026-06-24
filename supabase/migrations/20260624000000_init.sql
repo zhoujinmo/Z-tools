@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS ledgers (
     UNIQUE(user_id, name)
 );
 
--- 交易记录表
+-- 交易记录表（含逻辑删除字段）
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGSERIAL PRIMARY KEY,
     ledger_id BIGINT NOT NULL REFERENCES ledgers(id) ON DELETE CASCADE,
@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     date TEXT NOT NULL,
     time BIGINT NOT NULL,
     sync_status TEXT DEFAULT 'pending',
+    is_delete BOOLEAN DEFAULT false,
+    deleted_by BIGINT,
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -47,6 +50,7 @@ CREATE TABLE IF NOT EXISTS sync_records (
 CREATE INDEX IF NOT EXISTS idx_transactions_ledger_id ON transactions(ledger_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_ledgers_user_id ON ledgers(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_is_delete ON transactions(is_delete);
 
 -- 启用 Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

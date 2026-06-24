@@ -121,7 +121,10 @@ async function createTransaction(ledgerId, type, category, amount, remark, date,
 
 async function getTransactionsByLedger(ledgerId, month) {
   const db = getDB();
-  let query = db.from('transactions').select('*').eq('ledger_id', ledgerId);
+  let query = db.from('transactions')
+    .select('*')
+    .eq('ledger_id', ledgerId)
+    .eq('is_delete', false);
   if (month) {
     query = query.like('date', `${month}%`);
   }
@@ -144,17 +147,93 @@ async function updateTransaction(id, type, category, amount, remark, date, time)
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
+    .eq('is_delete', false)
     .select()
     .single();
   if (error) throw error;
   return data;
 }
 
-async function deleteTransaction(id) {
+async function deleteTransaction(id, deletedBy) {
   const db = getDB();
-  const { error } = await db.from('transactions').delete().eq('id', id);
+  const { data, error } = await db
+    .from('transactions')
+    .update({
+      is_delete: true,
+      deleted_by: deletedBy || null,
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('is_delete', false)
+    .select()
+    .single();
   if (error) throw error;
   return true;
+}
+
+async function batchDeleteTransactions(ids, deletedBy) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .update({
+      is_delete: true,
+      deleted_by: deletedBy || null,
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .in('id', ids)
+    .eq('is_delete', false)
+    .select();
+  if (error) throw error;
+  return data.length;
+}
+
+async function restoreTransaction(id) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .update({
+      is_delete: false,
+      deleted_by: null,
+      deleted_at: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('is_delete', true)
+    .select()
+    .single();
+  if (error) throw error;
+  return true;
+}
+
+async function batchRestoreTransactions(ids) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .update({
+      is_delete: false,
+      deleted_by: null,
+      deleted_at: null,
+      updated_at: new Date().toISOString()
+    })
+    .in('id', ids)
+    .eq('is_delete', true)
+    .select();
+  if (error) throw error;
+  return data.length;
+}
+
+async function getDeletedTransactions(ledgerId) {
+  const db = getDB();
+  const { data, error } = await db
+    .from('transactions')
+    .select('*')
+    .eq('ledger_id', ledgerId)
+    .eq('is_delete', true)
+    .order('deleted_at', { ascending: false });
+  if (error) throw error;
+  return data;
 }
 
 async function getTransactionStats(ledgerId, month) {
@@ -207,12 +286,13 @@ async function getAllUserTransactions(userId) {
   const ledgers = await getLedgersByUserId(userId);
   const ledgerIds = ledgers.map(l => l.id);
   if (ledgerIds.length === 0) return [];
-  
+
   const db = getDB();
   const { data, error } = await db
     .from('transactions')
     .select('*')
-    .in('ledger_id', ledgerIds);
+    .in('ledger_id', ledgerIds)
+    .eq('is_delete', false);
   if (error) throw error;
   return data;
 }
@@ -230,6 +310,10 @@ module.exports = {
   getTransactionsByLedger,
   updateTransaction,
   deleteTransaction,
+  batchDeleteTransactions,
+  restoreTransaction,
+  batchRestoreTransactions,
+  getDeletedTransactions,
   getTransactionStats,
   upsertSyncRecord,
   getSyncRecord,

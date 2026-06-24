@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06);
+  }
+  .dark .card-shadow {
+    box-shadow: 0 1px 12px rgba(0, 0, 0, 0.3);
+  }
+  .input-focus {
+    @apply border-neutral-300 dark:border-neutral-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white dark:bg-neutral-800 dark:text-white;
+  }
+  .btn-hover {
+    @apply transition-all duration-200 hover:opacity-90 active:scale-[0.97];
+  }
+  .cat-tag {
+    @apply flex items-center gap-1 px-2 py-1 rounded text-sm;
+  }
+  .fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .delay-1 {
+    animation-delay: 0.1s;
+    opacity: 0;
+  }
+  .delay-2 {
+    animation-delay: 0.2s;
+    opacity: 0;
+  }
+  .delay-3 {
+    animation-delay: 0.3s;
+    opacity: 0;
+  }
+  .delay-4 {
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
+}
