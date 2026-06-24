@@ -50,14 +50,14 @@ async function handleRegister(event) {
       return errorResponse(passwordCheck.message);
     }
 
-    const existingUser = getUserByUsername(username);
+    const existingUser = await getUserByUsername(username);
     if (existingUser) {
       return errorResponse('用户名已存在');
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = createUser(username, hash, email);
-    createLedger(user.id, '我的账本', '');
+    const user = await createUser(username, hash, email);
+    await createLedger(user.id, '我的账本', '');
 
     const token = generateToken(user.id, username);
     
@@ -78,7 +78,7 @@ async function handleLogin(event) {
       return errorResponse('用户名和密码不能为空');
     }
 
-    const user = getUserByUsername(username);
+    const user = await getUserByUsername(username);
     
     if (!user) {
       return errorResponse('用户名或密码错误', 401);
@@ -106,7 +106,7 @@ async function handleVerify(event) {
     return errorResponse(authResult.error, 401);
   }
 
-  const user = getUserById(authResult.user.userId);
+  const user = await getUserById(authResult.user.userId);
   
   if (!user) {
     return errorResponse('用户不存在', 401);

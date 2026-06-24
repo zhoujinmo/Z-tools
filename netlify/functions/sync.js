@@ -48,7 +48,7 @@ exports.handler = async (event) => {
 
 async function handleGetStatus(userId) {
   try {
-    const syncRecord = getSyncRecord(userId);
+    const syncRecord = await getSyncRecord(userId);
     
     return successResponse({ 
       data: { 
@@ -67,9 +67,9 @@ async function handlePull(userId, event) {
     
     let transactions = [];
     if (ledgerId) {
-      transactions = getTransactionsByLedger(ledgerId);
+      transactions = await getTransactionsByLedger(ledgerId);
     } else {
-      transactions = getAllUserTransactions(userId);
+      transactions = await getAllUserTransactions(userId);
     }
 
     if (lastSyncTime) {
@@ -77,7 +77,7 @@ async function handlePull(userId, event) {
     }
 
     const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
+    await upsertSyncRecord(userId, syncTime);
 
     return successResponse({ data: transactions, syncTime });
   } catch (err) {
@@ -98,18 +98,19 @@ async function handlePush(userId, event) {
 
     for (const item of transactions) {
       try {
-        const ledger = getLedgerById(item.ledgerId);
+        const ledger = await getLedgerById(item.ledgerId);
         if (!ledger || ledger.user_id !== userId) {
           errorCount++;
           continue;
         }
 
-        const existing = getTransactionsByLedger(item.ledgerId).find(t => t.date === item.date && t.time === item.time);
+        const existing = await getTransactionsByLedger(item.ledgerId);
+        const found = existing.find(t => t.date === item.date && t.time === item.time);
         
-        if (existing) {
-          updateTransaction(existing.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
+        if (found) {
+          await updateTransaction(found.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
         } else {
-          createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
+          await createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
         }
         successCount++;
       } catch (err) {
@@ -118,7 +119,7 @@ async function handlePush(userId, event) {
     }
 
     const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
+    await upsertSyncRecord(userId, syncTime);
 
     return successResponse({
       message: `同步完成: 成功 ${successCount}, 失败 ${errorCount}`,
@@ -132,11 +133,11 @@ async function handlePush(userId, event) {
 
 async function handleFullSync(userId) {
   try {
-    const ledgers = getLedgersByUserId(userId);
-    const transactions = getAllUserTransactions(userId);
+    const ledgers = await getLedgersByUserId(userId);
+    const transactions = await getAllUserTransactions(userId);
 
     const syncTime = new Date().toISOString();
-    upsertSyncRecord(userId, syncTime);
+    await upsertSyncRecord(userId, syncTime);
 
     return successResponse({
       data: {

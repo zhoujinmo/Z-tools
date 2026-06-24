@@ -59,13 +59,13 @@ exports.handler = async (event) => {
 
 async function handleGetByLedger(userId, ledgerId, query) {
   try {
-    const ledger = getLedgerById(ledgerId);
+    const ledger = await getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const transactions = getTransactionsByLedger(ledgerId, query?.month);
+    const transactions = await getTransactionsByLedger(ledgerId, query?.month);
 
     return successResponse({ data: transactions });
   } catch (err) {
@@ -75,13 +75,13 @@ async function handleGetByLedger(userId, ledgerId, query) {
 
 async function handleGetStats(userId, ledgerId, query) {
   try {
-    const ledger = getLedgerById(ledgerId);
+    const ledger = await getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const stats = getTransactionStats(ledgerId, query?.month);
+    const stats = await getTransactionStats(ledgerId, query?.month);
 
     return successResponse({ data: stats });
   } catch (err) {
@@ -97,13 +97,13 @@ async function handleCreate(userId, event) {
       return errorResponse('缺少必要参数');
     }
 
-    const ledger = getLedgerById(ledgerId);
+    const ledger = await getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const transaction = createTransaction(ledgerId, type, category, amount, remark, date, time);
+    const transaction = await createTransaction(ledgerId, type, category, amount, remark, date, time);
 
     return successResponse({
       data: { id: transaction.id }
@@ -117,7 +117,7 @@ async function handleUpdate(userId, transactionId, event) {
   try {
     const { type, category, amount, remark, date, time } = JSON.parse(event.body);
 
-    updateTransaction(transactionId, type, category, amount, remark, date, time);
+    await updateTransaction(transactionId, type, category, amount, remark, date, time);
 
     return successResponse({}, '交易记录更新成功');
   } catch (err) {
@@ -127,7 +127,7 @@ async function handleUpdate(userId, transactionId, event) {
 
 async function handleDelete(userId, transactionId) {
   try {
-    const success = deleteTransaction(transactionId);
+    const success = await deleteTransaction(transactionId);
     
     if (!success) {
       return errorResponse('交易记录不存在', 404);

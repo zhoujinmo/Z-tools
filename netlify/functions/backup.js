@@ -40,8 +40,8 @@ exports.handler = async (event) => {
 
 async function handleExport(userId) {
   try {
-    const ledgers = getLedgersByUserId(userId);
-    const transactions = getAllUserTransactions(userId);
+    const ledgers = await getLedgersByUserId(userId);
+    const transactions = await getAllUserTransactions(userId);
 
     const backupData = {
       exportTime: new Date().toISOString(),
@@ -70,12 +70,13 @@ async function handleImport(userId, event) {
 
     for (const ledger of ledgers) {
       try {
-        const existing = getLedgersByUserId(userId).find(l => l.name === ledger.name);
-        if (existing) {
-          ledgerMap[ledger.id] = existing.id;
+        const existing = await getLedgersByUserId(userId);
+        const found = existing.find(l => l.name === ledger.name);
+        if (found) {
+          ledgerMap[ledger.id] = found.id;
           skipCount++;
         } else {
-          const newLedger = createLedger(userId, ledger.name, ledger.description);
+          const newLedger = await createLedger(userId, ledger.name, ledger.description);
           ledgerMap[ledger.id] = newLedger.id;
           successCount++;
         }
@@ -88,11 +89,12 @@ async function handleImport(userId, event) {
       try {
         const actualLedgerId = ledgerMap[trans.ledgerId] || trans.ledgerId;
         
-        const existing = getAllUserTransactions(userId).find(t => t.date === trans.date && t.time === trans.time);
-        if (existing) {
+        const existing = await getAllUserTransactions(userId);
+        const found = existing.find(t => t.date === trans.date && t.time === trans.time);
+        if (found) {
           skipCount++;
         } else {
-          createTransaction(actualLedgerId, trans.type, trans.category, trans.amount, trans.remark, trans.date, trans.time);
+          await createTransaction(actualLedgerId, trans.type, trans.category, trans.amount, trans.remark, trans.date, trans.time);
           successCount++;
         }
       } catch (err) {
