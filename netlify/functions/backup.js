@@ -1,4 +1,4 @@
-const { getDB } = require('./utils/db');
+const { getLedgersByUserId, getAllUserTransactions, createLedger, createTransaction } = require('./utils/db');
 const { authenticate } = require('./utils/auth');
 
 function successResponse(data, message = '操作成功') {
@@ -40,42 +40,13 @@ exports.handler = async (event) => {
 
 async function handleExport(userId) {
   try {
-    const db = await getDB();
-    
-    const result = db.exec(`SELECT l.id as ledger_id, l.name as ledger_name, l.description as ledger_description, t.* FROM transactions t JOIN ledgers l ON t.ledger_id = l.id WHERE l.user_id = ${userId}`);
-    
-    const ledgers = {};
-    const transactions = [];
-    
-    if (result.length > 0 && result[0].values.length > 0) {
-      result[0].values.forEach(row => {
-        const ledgerId = row[0];
-        if (!ledgers[ledgerId]) {
-          ledgers[ledgerId] = {
-            id: ledgerId,
-            name: row[1],
-            description: row[2]
-          };
-        }
-        transactions.push({
-          id: row[3],
-          ledgerId: ledgerId,
-          type: row[4],
-          category: row[5],
-          amount: row[6],
-          remark: row[7],
-          date: row[8],
-          time: row[9],
-          createdAt: row[11],
-          updatedAt: row[12]
-        });
-      });
-    }
+    const ledgers = getLedgersByUserId(userId);
+    const transactions = getAllUserTransactions(userId);
 
     const backupData = {
       exportTime: new Date().toISOString(),
       userId,
-      ledgers: Object.values(ledgers),
+      ledgers,
       transactions
     };
 
@@ -93,18 +64,20 @@ async function handleImport(userId, event) {
       return errorResponse('无效的数据格式');
     }
 
-    const db = await getDB();
     const ledgerMap = {};
     let successCount = 0;
     let skipCount = 0;
 
     for (const ledger of ledgers) {
       try {
-        db.run(`INSERT OR IGNORE INTO ledgers (user_id, name, description) VALUES (${userId}, '${ledger.name}', '${ledger.description || ''}')`);
-        
-        const result = db.exec(`SELECT id FROM ledgers WHERE user_id = ${userId} AND name = '${ledger.name}'`);
-        if (result.length > 0 && result[0].values.length > 0) {
-          ledgerMap[ledger.id] = result[0].values[0][0];
+        const existing = getLedgersByUserId(userId).find(l => l.name === ledger.name);
+        if (existing) {
+          ledgerMap[ledger.id] = existing.id;
+          skipCount++;
+        } else {
+          const newLedger = createLedger(userId, ledger.name, ledger.description);
+          ledgerMap[ledger.id] = newLedger.id;
+          successCount++;
         }
       } catch (err) {
         skipCount++;
@@ -115,13 +88,12 @@ async function handleImport(userId, event) {
       try {
         const actualLedgerId = ledgerMap[trans.ledgerId] || trans.ledgerId;
         
-        db.run(`INSERT OR IGNORE INTO transactions (ledger_id, type, category, amount, remark, date, time) VALUES (${actualLedgerId}, '${trans.type}', '${trans.category}', ${trans.amount}, '${trans.remark || ''}', '${trans.date}', ${trans.time})`);
-        
-        const changes = db.exec('SELECT changes() AS count')[0].values[0][0];
-        if (changes > 0) {
-          successCount++;
-        } else {
+        const existing = getAllUserTransactions(userId).find(t => t.date === trans.date && t.time === trans.time);
+        if (existing) {
           skipCount++;
+        } else {
+          createTransaction(actualLedgerId, trans.type, trans.category, trans.amount, trans.remark, trans.date, trans.time);
+          successCount++;
         }
       } catch (err) {
         skipCount++;
