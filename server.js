@@ -1,65 +1,33 @@
-const http = require('http');
-const fs = require('fs');
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
 const path = require('path');
 
-const server = http.createServer((req, res) => {
-  const originalUrl = req.url;
-  let filePath = '.' + decodeURIComponent(req.url);
-  
-  if (filePath === './') {
-    filePath = './index.html';
-  }
+const app = express();
+const PORT = process.env.PORT || 8080;
 
-  const extname = path.extname(filePath);
-  let contentType = 'text/html';
-  switch (extname) {
-    case '.js':
-      contentType = 'text/javascript';
-      break;
-    case '.css':
-      contentType = 'text/css';
-      break;
-    case '.json':
-      contentType = 'application/json';
-      break;
-    case '.png':
-      contentType = 'image/png';
-      break;
-    case '.jpg':
-    case '.jpeg':
-      contentType = 'image/jpeg';
-      break;
-    case '.svg':
-      contentType = 'image/svg+xml';
-      break;
-    case '.ico':
-      contentType = 'image/x-icon';
-      break;
-    case '.txt':
-      contentType = 'text/plain';
-      break;
-  }
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname)));
 
-  fs.readFile(filePath, (error, content) => {
-    if (error) {
-      if(error.code === 'ENOENT'){
-        console.log(`❌ 404 Not Found: ${originalUrl}`);
-        res.writeHead(404);
-        res.end('File not found');
-      } else {
-        console.log(`❌ Server Error (${error.code}): ${originalUrl}`);
-        res.writeHead(500);
-        res.end('Server Error: ' + error.code);
-      }
-    } else {
-      console.log(`✅ 200 OK: ${originalUrl}`);
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
-    }
-  });
+require('./config/db');
+
+const authRoutes = require('./routes/auth');
+const ledgerRoutes = require('./routes/ledgers');
+const transactionRoutes = require('./routes/transactions');
+const syncRoutes = require('./routes/sync');
+const backupRoutes = require('./routes/backup');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/ledgers', ledgerRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/backup', backupRoutes);
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const PORT = 8080;
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+app.listen(PORT, () => {
+  console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
 });

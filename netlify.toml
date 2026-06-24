@@ -1,7 +1,32 @@
 [build]
-  command = "echo 'Build completed'"
+  command = "npm run build"
   publish = "."
 
 [[edge_functions]]
   function = "weather-proxy"
   path = "/weather-api"
+
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/.netlify/functions/auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/ledgers/*"
+  to = "/.netlify/functions/ledgers"
+  status = 200
+
+[[redirects]]
+  from = "/api/transactions/*"
+  to = "/.netlify/functions/transactions"
+  status = 200
+
+[[redirects]]
+  from = "/api/sync/*"
+  to = "/.netlify/functions/sync"
+  status = 200
+
+[[redirects]]
+  from = "/api/backup/*"
+  to = "/.netlify/functions/backup"
+  status = 200

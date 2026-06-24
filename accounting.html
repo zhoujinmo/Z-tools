@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>简记 · 全能记账工具（内置自定义分类）</title>
+    <title>简记 · 全能记账工具（支持跨设备同步）</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
@@ -66,173 +66,223 @@
     </style>
 </head>
 <body class="bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 min-h-screen transition-colors duration-300">
-    <div class="max-w-2xl mx-auto px-4 py-8">
-        <!-- 头部 -->
-        <header class="mb-8 flex justify-between items-start">
-            <div>
-                <a href="index.html" class="inline-flex items-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-primary mb-2 transition-colors">
-                    <i class="fa fa-arrow-left"></i>返回作品集
-                </a>
-                <h1 class="text-[26px] font-semibold flex items-center gap-2">
-                    <i class="fa fa-wallet text-primary"></i>简记
-                </h1>
-                <p class="text-neutral-500 dark:text-neutral-400 mt-1">收支记账·自定义分类·多月统计·数据备份</p>
-            </div>
-            <button id="themeToggle" class="text-xl p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 btn-hover">
-                <i class="fa fa-moon-o dark:hidden"></i>
-                <i class="fa fa-sun-o hidden dark:block"></i>
-            </button>
-        </header>
-
-        <!-- 月份选择器 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 flex items-center justify-between gap-3">
-            <button id="prevMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-left"></i></button>
-            <select id="monthSelect" class="flex-1 py-2 px-3 rounded-lg input-focus"></select>
-            <button id="nextMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-right"></i></button>
-        </section>
-
-        <!-- 预算设置卡片 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="font-medium text-lg"><i class="fa fa-bullseye text-warn mr-2"></i>月度预算</h3>
-                <span id="budgetWarn" class="text-expense font-medium hidden"><i class="fa fa-exclamation-circle"></i> 已超预算！</span>
-            </div>
-            <div class="flex gap-3">
-                <input type="number" id="monthBudget" placeholder="设置本月预算" min="0" step="0.01" class="flex-1 rounded-xl py-3 px-4 input-focus">
-                <button id="saveBudget" class="bg-warn text-white px-5 rounded-xl btn-hover">保存</button>
-            </div>
-            <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
-                <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
-                    <span class="text-neutral-500 dark:text-neutral-400">预算总额</span>
-                    <p id="budgetTotal" class="font-semibold text-lg mt-1">¥0.00</p>
+    <div id="authContainer" class="max-w-md mx-auto px-4 py-8">
+        <div class="bg-white dark:bg-neutral-800 rounded-2xl p-8 card-shadow">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-wallet text-primary text-3xl"></i>
                 </div>
-                <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
-                    <span class="text-neutral-500 dark:text-neutral-400">已支出</span>
-                    <p id="budgetUsed" class="font-semibold text-lg mt-1">¥0.00</p>
-                </div>
+                <h1 class="text-2xl font-bold text-neutral-800 dark:text-neutral-100">简记</h1>
+                <p class="text-neutral-500 dark:text-neutral-400 mt-2">跨设备同步记账工具</p>
             </div>
-        </section>
 
-        <!-- 资产总览+双图表 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
-            <div class="flex justify-between items-start mb-4">
+            <div class="flex bg-neutral-100 dark:bg-neutral-700 rounded-xl p-1 mb-6">
+                <button id="loginTab" class="flex-1 py-2 rounded-lg bg-white dark:bg-neutral-600 text-primary font-medium btn-hover">登录</button>
+                <button id="registerTab" class="flex-1 py-2 rounded-lg text-neutral-500 dark:text-neutral-400 font-medium btn-hover">注册</button>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
                 <div>
-                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月结余</p>
-                    <h2 id="balanceTotal" class="text-[32px] font-bold mt-1">¥0.00</h2>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名" required class="w-full border rounded-xl px-4 py-3 input-focus">
                 </div>
-                <canvas id="pieChart" width="110" height="110"></canvas>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
-                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月收入</p>
-                    <p id="monthIncome" class="text-income text-xl font-semibold mt-1">¥0.00</p>
-                </div>
-                <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
-                    <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月支出</p>
-                    <p id="monthExpense" class="text-expense text-xl font-semibold mt-1">¥0.00</p>
-                </div>
-            </div>
-            <div>
-                <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-2">支出分类统计</p>
-                <canvas id="barChart" height="160"></canvas>
-            </div>
-        </section>
-
-        <!-- 新增账单表单 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
-            <h3 class="font-medium text-lg mb-4">新增记录</h3>
-            <form id="billForm" class="space-y-4">
-                <!-- 收支类型切换 -->
-                <div class="flex gap-3">
-                    <label class="flex-1 cursor-pointer">
-                        <input type="radio" name="type" value="income" class="hidden peer" checked>
-                        <div class="peer-checked:bg-income peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
-                            <i class="fa fa-plus mr-1"></i>收入
-                        </div>
-                    </label>
-                    <label class="flex-1 cursor-pointer">
-                        <input type="radio" name="type" value="expense" class="hidden peer">
-                        <div class="peer-checked:bg-expense peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
-                            <i class="fa fa-minus mr-1"></i>支出
-                        </div>
-                    </label>
-                </div>
-
-                <!-- 金额 -->
                 <div>
-                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">金额</label>
-                    <input type="number" step="0.01" min="0.01" id="amount" placeholder="输入金额" required class="w-full border rounded-xl px-4 py-3 input-focus">
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码" required class="w-full border rounded-xl px-4 py-3 input-focus">
                 </div>
-
-                <!-- 收入分类面板 -->
-                <div id="incomeCatWrap">
-                    <label class="text-sm text-income font-medium block mb-2"><i class="fa fa-money mr-1"></i>收入分类</label>
-                    <div id="incomeCatBox" class="grid grid-cols-2 gap-2 mb-3">
-                        <!-- 动态渲染收入分类 -->
-                    </div>
-                    <!-- 自定义收入输入区域（替换原其他收入） -->
-                    <div class="flex gap-2">
-                        <input id="newIncomeCat" placeholder="添加自定义收入分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
-                        <button type="button" id="addIncomeCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
-                    </div>
-                </div>
-
-                <!-- 支出分类面板 -->
-                <div id="expenseCatWrap" class="hidden">
-                    <label class="text-sm text-expense font-medium block mb-2"><i class="fa fa-shopping-cart mr-1"></i>支出分类</label>
-                    <div id="expenseCatBox" class="grid grid-cols-2 gap-2 mb-3">
-                        <!-- 动态渲染支出分类 -->
-                    </div>
-                    <!-- 自定义支出输入区域（替换原其他支出） -->
-                    <div class="flex gap-2">
-                        <input id="newExpenseCat" placeholder="添加自定义支出分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
-                        <button type="button" id="addExpenseCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
-                    </div>
-                </div>
-
-                <!-- 备注 -->
-                <div>
-                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">备注（选填）</label>
-                    <input type="text" id="remark" placeholder="简单备注这笔开销" class="w-full border rounded-xl px-4 py-3 input-focus">
-                </div>
-
-                <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-medium btn-hover">保存记录</button>
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-medium btn-hover">登录</button>
             </form>
-        </section>
 
-        <!-- 操作工具栏：导出/备份/导入/清空 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 grid grid-cols-2 gap-3">
-            <button id="exportExcel" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-file-excel-o text-income mr-1"></i>导出Excel</button>
-            <button id="exportJson" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-download text-primary mr-1"></i>备份数据</button>
-            <label class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-center cursor-pointer btn-hover block">
-                <i class="fa fa-upload text-warn mr-1"></i>导入备份
-                <input type="file" id="importJson" accept=".json" class="hidden">
-            </label>
-            <button id="clearAll" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-trash text-expense mr-1"></i>清空全部</button>
-        </section>
-
-        <!-- 账单列表 -->
-        <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow">
-            <h3 class="font-medium text-lg mb-4">账单明细</h3>
-            <div id="billList" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                <div class="text-center py-10 text-neutral-400">
-                    <i class="fa fa-file-text-o text-3xl block mb-2"></i>暂无账单记录
+            <form id="registerForm" class="space-y-4 hidden">
+                <div>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">用户名</label>
+                    <input type="text" id="regUsername" placeholder="请输入用户名" required class="w-full border rounded-xl px-4 py-3 input-focus">
                 </div>
+                <div>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">密码</label>
+                    <input type="password" id="regPassword" placeholder="至少8位，包含字母和数字" required class="w-full border rounded-xl px-4 py-3 input-focus">
+                </div>
+                <div>
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">邮箱（选填）</label>
+                    <input type="email" id="regEmail" placeholder="请输入邮箱" class="w-full border rounded-xl px-4 py-3 input-focus">
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-medium btn-hover">注册</button>
+            </form>
+
+            <div id="authMessage" class="mt-4 text-center text-sm"></div>
+        </div>
+    </div>
+
+    <div id="appContainer" class="hidden">
+        <div class="max-w-2xl mx-auto px-4 py-8">
+            <header class="mb-8 flex justify-between items-start">
+                <div>
+                    <a href="index.html" class="inline-flex items-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-primary mb-2 transition-colors">
+                        <i class="fa fa-arrow-left"></i>返回作品集
+                    </a>
+                    <h1 class="text-[26px] font-semibold flex items-center gap-2">
+                        <i class="fa fa-wallet text-primary"></i>简记
+                    </h1>
+                    <p class="text-neutral-500 dark:text-neutral-400 mt-1">收支记账·自定义分类·多月统计·跨设备同步</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="syncBtn" class="text-sm px-3 py-2 rounded-lg bg-primary/10 text-primary btn-hover flex items-center gap-1">
+                        <i class="fa fa-refresh"></i>同步
+                    </button>
+                    <button id="themeToggle" class="text-xl p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 btn-hover">
+                        <i class="fa fa-moon-o dark:hidden"></i>
+                        <i class="fa fa-sun-o hidden dark:block"></i>
+                    </button>
+                    <button id="logoutBtn" class="text-sm px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 btn-hover">
+                        退出登录
+                    </button>
+                </div>
+            </header>
+
+            <div id="syncStatus" class="mb-4 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm hidden flex items-center justify-between">
+                <span><i class="fa fa-info-circle"></i> 同步状态</span>
+                <span id="syncText">上次同步：未知</span>
             </div>
-        </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 flex items-center justify-between gap-3">
+                <button id="prevMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-left"></i></button>
+                <select id="monthSelect" class="flex-1 py-2 px-3 rounded-lg input-focus"></select>
+                <button id="nextMonth" class="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-chevron-right"></i></button>
+            </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-medium text-lg"><i class="fa fa-bullseye text-warn mr-2"></i>月度预算</h3>
+                    <span id="budgetWarn" class="text-expense font-medium hidden"><i class="fa fa-exclamation-circle"></i> 已超预算！</span>
+                </div>
+                <div class="flex gap-3">
+                    <input type="number" id="monthBudget" placeholder="设置本月预算" min="0" step="0.01" class="flex-1 rounded-xl py-3 px-4 input-focus">
+                    <button id="saveBudget" class="bg-warn text-white px-5 rounded-xl btn-hover">保存</button>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
+                        <span class="text-neutral-500 dark:text-neutral-400">预算总额</span>
+                        <p id="budgetTotal" class="font-semibold text-lg mt-1">¥0.00</p>
+                    </div>
+                    <div class="bg-neutral-50 dark:bg-neutral-700 p-3 rounded-xl">
+                        <span class="text-neutral-500 dark:text-neutral-400">已支出</span>
+                        <p id="budgetUsed" class="font-semibold text-lg mt-1">¥0.00</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月结余</p>
+                        <h2 id="balanceTotal" class="text-[32px] font-bold mt-1">¥0.00</h2>
+                    </div>
+                    <canvas id="pieChart" width="110" height="110"></canvas>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
+                        <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月收入</p>
+                        <p id="monthIncome" class="text-income text-xl font-semibold mt-1">¥0.00</p>
+                    </div>
+                    <div class="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
+                        <p class="text-neutral-500 dark:text-neutral-400 text-sm">当月支出</p>
+                        <p id="monthExpense" class="text-expense text-xl font-semibold mt-1">¥0.00</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-2">支出分类统计</p>
+                    <canvas id="barChart" height="160"></canvas>
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow mb-6">
+                <h3 class="font-medium text-lg mb-4">新增记录</h3>
+                <form id="billForm" class="space-y-4">
+                    <div class="flex gap-3">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="type" value="income" class="hidden peer" checked>
+                            <div class="peer-checked:bg-income peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
+                                <i class="fa fa-plus mr-1"></i>收入
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="type" value="expense" class="hidden peer">
+                            <div class="peer-checked:bg-expense peer-checked:text-white bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl py-3 text-center btn-hover">
+                                <i class="fa fa-minus mr-1"></i>支出
+                            </div>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">金额</label>
+                        <input type="number" step="0.01" min="0.01" id="amount" placeholder="输入金额" required class="w-full border rounded-xl px-4 py-3 input-focus">
+                    </div>
+
+                    <div id="incomeCatWrap">
+                        <label class="text-sm text-income font-medium block mb-2"><i class="fa fa-money mr-1"></i>收入分类</label>
+                        <div id="incomeCatBox" class="grid grid-cols-2 gap-2 mb-3"></div>
+                        <div class="flex gap-2">
+                            <input id="newIncomeCat" placeholder="添加自定义收入分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
+                            <button type="button" id="addIncomeCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
+                        </div>
+                    </div>
+
+                    <div id="expenseCatWrap" class="hidden">
+                        <label class="text-sm text-expense font-medium block mb-2"><i class="fa fa-shopping-cart mr-1"></i>支出分类</label>
+                        <div id="expenseCatBox" class="grid grid-cols-2 gap-2 mb-3"></div>
+                        <div class="flex gap-2">
+                            <input id="newExpenseCat" placeholder="添加自定义支出分类" class="flex-1 rounded-lg py-2 px-3 input-focus text-sm">
+                            <button type="button" id="addExpenseCatBtn" class="bg-primary text-white px-3 rounded-lg btn-hover text-sm">添加</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm text-neutral-600 dark:text-neutral-400 block mb-1">备注（选填）</label>
+                        <input type="text" id="remark" placeholder="简单备注这笔开销" class="w-full border rounded-xl px-4 py-3 input-focus">
+                    </div>
+
+                    <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-medium btn-hover">保存记录</button>
+                </form>
+            </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-4 card-shadow mb-6 grid grid-cols-2 gap-3">
+                <button id="exportExcel" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-file-excel-o text-income mr-1"></i>导出Excel</button>
+                <button id="exportJson" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-download text-primary mr-1"></i>备份数据</button>
+                <label class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-center cursor-pointer btn-hover block">
+                    <i class="fa fa-upload text-warn mr-1"></i>导入备份
+                    <input type="file" id="importJson" accept=".json" class="hidden">
+                </label>
+                <button id="clearAll" class="py-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 btn-hover"><i class="fa fa-trash text-expense mr-1"></i>清空全部</button>
+            </section>
+
+            <section class="bg-white dark:bg-neutral-800 rounded-2xl p-6 card-shadow">
+                <h3 class="font-medium text-lg mb-4">账单明细</h3>
+                <div id="billList" class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                    <div class="text-center py-10 text-neutral-400">
+                        <i class="fa fa-file-text-o text-3xl block mb-2"></i>暂无账单记录
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script>
-        // 存储常量
+        const API_BASE = '/api';
+        let currentUser = null;
+        let currentLedgerId = null;
+        let lastSyncTime = null;
+
         const STORAGE_KEY = 'simple-bill-data';
         const THEME_KEY = 'bill-theme';
         const BUDGET_KEY = 'bill-budget';
         const CUSTOM_CAT_KEY = 'bill-custom-category';
+        const TOKEN_KEY = 'bill-token';
+        const USER_KEY = 'bill-user';
+        
         let pieChart = null;
         let barChart = null;
         let currentSelectYM = '';
 
-        // 系统内置分类（已移除「其他」，纯固定系统分类）
         const systemCategory = {
             income: [
                 { name: "工资", icon: "fa-briefcase", color: "salary" },
@@ -250,17 +300,16 @@
             ]
         };
 
-        // 读取本地自定义分类
         function getCustomCategory() {
             const raw = localStorage.getItem(CUSTOM_CAT_KEY);
             if (!raw) return { income: [], expense: [] };
             return JSON.parse(raw);
         }
-        // 保存自定义分类
+
         function saveCustomCategory(obj) {
             localStorage.setItem(CUSTOM_CAT_KEY, JSON.stringify(obj));
         }
-        // 删除单条自定义分类
+
         function delCustomCat(type, name) {
             const custom = getCustomCategory();
             custom[type] = custom[type].filter(item => item.name !== name);
@@ -268,7 +317,6 @@
             renderCatPanel();
         }
 
-        // 整合系统分类+自定义分类
         function getAllCategory(type) {
             const sys = [...systemCategory[type]];
             const custom = getCustomCategory()[type].map(item => ({
@@ -280,52 +328,57 @@
             return [...sys, ...custom];
         }
 
-        // 分类图标映射（账单列表渲染用）
         function getCatIcon(name, type) {
             const all = getAllCategory(type);
             const find = all.find(c => c.name === name);
             return find ? find.icon : "fa-file-o";
         }
 
-        // ========== 本地存储工具 ==========
         function getBills() {
             const d = localStorage.getItem(STORAGE_KEY);
             return d ? JSON.parse(d) : [];
         }
+
         function saveBills(list) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
         }
+
         function setTheme(isDark) {
             if(isDark) document.documentElement.classList.add('dark');
             else document.documentElement.classList.remove('dark');
             localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
         }
+
         function loadTheme() {
             const t = localStorage.getItem(THEME_KEY);
             setTheme(t === 'dark');
         }
+
         function saveBudget(ym, num) {
             const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}');
             budgetObj[ym] = Number(num);
             localStorage.setItem(BUDGET_KEY, JSON.stringify(budgetObj));
         }
+
         function getBudget(ym) {
             const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || '{}');
             return budgetObj[ym] || 0;
         }
 
-        // ========== 工具函数 ==========
         function getCurrentYM() {
             const now = new Date();
             return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
         }
+
         function formatMoney(n) {
             return '¥' + Number(n).toFixed(2);
         }
+
         function parseYM(ym) {
             const [y, m] = ym.split('-').map(Number);
             return { year: y, month: m };
         }
+
         function addMonth(ym, step) {
             let { year, month } = parseYM(ym);
             month += step;
@@ -333,6 +386,7 @@
             while(month < 1) { year--; month +=12; }
             return `${year}-${String(month).padStart(2,'0')}`;
         }
+
         function getAllYMList() {
             const bills = getBills();
             const ymSet = new Set();
@@ -342,11 +396,11 @@
             if(!list.includes(nowYM)) list.unshift(nowYM);
             return list;
         }
+
         function getMonthBills(ym) {
             return getBills().filter(item => item.date.startsWith(ym));
         }
 
-        // 切换收入/支出分类面板
         function switchCatPanel(type) {
             const incomeWrap = document.getElementById('incomeCatWrap');
             const expenseWrap = document.getElementById('expenseCatWrap');
@@ -369,11 +423,10 @@
             }
         }
 
-        // 渲染分类选择面板
         function renderCatPanel() {
             const incomeBox = document.getElementById('incomeCatBox');
             const expenseBox = document.getElementById('expenseCatBox');
-            // 渲染收入
+            
             let incomeHtml = '';
             getAllCategory('income').forEach(cat => {
                 incomeHtml += `
@@ -390,7 +443,7 @@
                 `;
             });
             incomeBox.innerHTML = incomeHtml;
-            // 渲染支出
+
             let expenseHtml = '';
             getAllCategory('expense').forEach(cat => {
                 expenseHtml += `
@@ -408,7 +461,6 @@
             });
             expenseBox.innerHTML = expenseHtml;
 
-            // 绑定删除自定义分类按钮
             document.querySelectorAll('.del-custom-cat').forEach(btn=>{
                 btn.onclick = function(e){
                     e.preventDefault();
@@ -421,15 +473,12 @@
             })
         }
 
-        // 添加自定义分类
         function addCustomCat(type) {
             const inputEl = type === 'income' ? document.getElementById('newIncomeCat') : document.getElementById('newExpenseCat');
             const name = inputEl.value.trim();
             if(!name) return alert('请输入分类名称');
-            // 校验重名
             const allNames = getAllCategory(type).map(c=>c.name);
             if(allNames.includes(name)) return alert('该分类名称已存在！');
-            // 保存
             const custom = getCustomCategory();
             custom[type].push({ name });
             saveCustomCategory(custom);
@@ -437,7 +486,6 @@
             inputEl.value = '';
         }
 
-        // ========== 渲染月份下拉选择器 ==========
         function renderMonthSelect() {
             const sel = document.getElementById('monthSelect');
             const ymList = getAllYMList();
@@ -452,7 +500,6 @@
             sel.value = currentSelectYM;
         }
 
-        // ========== 预算计算与超支提醒 ==========
         function calcBudgetStat(ym) {
             const budgetVal = getBudget(ym);
             const monthBills = getMonthBills(ym);
@@ -466,12 +513,10 @@
             else warnDom.classList.add('hidden');
         }
 
-        // ========== 统计、饼图、柱状图 ==========
         function renderStatsAndChart(ym) {
             const bills = getMonthBills(ym);
             let income = 0, expense = 0;
             const categoryMap = {};
-            // 初始化所有支出分类
             getAllCategory('expense').forEach(c=>categoryMap[c.name] = 0);
             bills.forEach(item=>{
                 const num = Number(item.amount);
@@ -486,7 +531,6 @@
             document.getElementById('monthIncome').textContent = formatMoney(income);
             document.getElementById('monthExpense').textContent = formatMoney(expense);
 
-            // 收支饼图
             const pieCtx = document.getElementById('pieChart').getContext('2d');
             if(pieChart) pieChart.destroy();
             pieChart = new Chart(pieCtx, {
@@ -498,7 +542,6 @@
                 options:{cutout:'70%',plugins:{legend:{display:false}},maintainAspectRatio:false}
             })
 
-            // 支出分类柱状图
             const barCtx = document.getElementById('barChart').getContext('2d');
             if(barChart) barChart.destroy();
             const catLabels = Object.keys(categoryMap);
@@ -520,7 +563,6 @@
             })
         }
 
-        // ========== 账单列表渲染（带分类图标） ==========
         function renderBillList(ym) {
             const wrap = document.getElementById('billList');
             const bills = getMonthBills(ym);
@@ -555,17 +597,38 @@
             })
             wrap.innerHTML = html;
             document.querySelectorAll('.del-btn').forEach(btn=>{
-                btn.onclick = function(){
+                btn.onclick = async function(){
                     const delDate = this.dataset.date;
                     const delTime = Number(this.dataset.time);
-                    const all = getBills().filter(i=>!(i.date===delDate && i.time===delTime));
+                    let all = getBills().filter(i=>!(i.date===delDate && i.time===delTime));
                     saveBills(all);
+                    
+                    if (currentUser && currentLedgerId) {
+                        try {
+                            const token = localStorage.getItem(TOKEN_KEY);
+                            await fetch(`${API_BASE}/transactions/${findTransactionId(delDate, delTime)}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                        } catch (e) {
+                            console.log('删除失败，将在下次同步时处理');
+                        }
+                    }
+                    
                     refreshAll();
                 }
             })
         }
 
-        // ========== 全局刷新 ==========
+        function findTransactionId(date, time) {
+            const bills = getBills();
+            const bill = bills.find(b => b.date === date && b.time === time);
+            return bill?.id;
+        }
+
         function refreshAll() {
             renderMonthSelect();
             renderCatPanel();
@@ -574,7 +637,6 @@
             renderBillList(currentSelectYM);
         }
 
-        // ========== Excel导出功能 ==========
         function exportToExcel() {
             const all = getBills();
             if(all.length === 0) return alert('暂无账单可导出');
@@ -594,7 +656,6 @@
             XLSX.writeFile(book, `账单记录_${new Date().toLocaleDateString()}.xlsx`);
         }
 
-        // ========== JSON备份与导入 ==========
         function exportJsonBackup() {
             const dataStr = JSON.stringify({
                 bills: getBills(),
@@ -608,6 +669,7 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+
         function importJsonFile(file) {
             const reader = new FileReader();
             reader.onload = e=>{
@@ -625,48 +687,259 @@
             reader.readAsText(file);
         }
 
-        // ========== 绑定页面事件 ==========
-        function bindEvents() {
-            // 主题切换
+        async function apiRequest(url, method, data = null) {
+            const token = localStorage.getItem(TOKEN_KEY);
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            if (token) {
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            const response = await fetch(`${API_BASE}${url}`, options);
+            return await response.json();
+        }
+
+        async function login(username, password) {
+            try {
+                const result = await apiRequest('/auth/login', 'POST', { username, password });
+                if (result.success) {
+                    localStorage.setItem(TOKEN_KEY, result.token);
+                    localStorage.setItem(USER_KEY, JSON.stringify(result.user));
+                    currentUser = result.user;
+                    await loadUserData();
+                    showApp();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (e) {
+                showMessage('登录失败，请检查网络', 'error');
+            }
+        }
+
+        async function register(username, password, email) {
+            try {
+                const result = await apiRequest('/auth/register', 'POST', { username, password, email });
+                if (result.success) {
+                    localStorage.setItem(TOKEN_KEY, result.token);
+                    localStorage.setItem(USER_KEY, JSON.stringify(result.user));
+                    currentUser = result.user;
+                    await loadUserData();
+                    showApp();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (e) {
+                showMessage('注册失败，请检查网络', 'error');
+            }
+        }
+
+        async function loadUserData() {
+            try {
+                const ledgers = await apiRequest('/ledgers', 'GET');
+                if (ledgers.success && ledgers.data.length > 0) {
+                    currentLedgerId = ledgers.data[0].id;
+                    await syncPull();
+                }
+            } catch (e) {
+                console.log('加载账本列表失败');
+            }
+        }
+
+        async function syncPull() {
+            if (!currentUser || !currentLedgerId) return;
+            try {
+                const result = await apiRequest('/sync/pull', 'POST', { 
+                    lastSyncTime, 
+                    ledgerId: currentLedgerId 
+                });
+                if (result.success) {
+                    const localBills = getBills();
+                    const serverBills = result.data;
+                    
+                    serverBills.forEach(serverBill => {
+                        const exists = localBills.find(b => 
+                            b.date === serverBill.date && b.time === serverBill.time
+                        );
+                        if (!exists) {
+                            localBills.push({
+                                id: serverBill.id,
+                                type: serverBill.type,
+                                category: serverBill.category,
+                                amount: serverBill.amount,
+                                remark: serverBill.remark,
+                                date: serverBill.date,
+                                time: serverBill.time
+                            });
+                        }
+                    });
+                    
+                    saveBills(localBills);
+                    lastSyncTime = result.syncTime;
+                    updateSyncStatus();
+                    refreshAll();
+                }
+            } catch (e) {
+                console.log('同步失败');
+            }
+        }
+
+        async function syncPush() {
+            if (!currentUser || !currentLedgerId) return;
+            try {
+                const bills = getBills().map(b => ({
+                    ledgerId: currentLedgerId,
+                    type: b.type,
+                    category: b.category,
+                    amount: b.amount,
+                    remark: b.remark,
+                    date: b.date,
+                    time: b.time
+                }));
+                const result = await apiRequest('/sync/push', 'POST', { transactions: bills });
+                if (result.success) {
+                    lastSyncTime = result.syncTime;
+                    updateSyncStatus();
+                    showMessage(result.message, 'success');
+                }
+            } catch (e) {
+                showMessage('同步失败，请检查网络', 'error');
+            }
+        }
+
+        function updateSyncStatus() {
+            const statusDiv = document.getElementById('syncStatus');
+            const syncText = document.getElementById('syncText');
+            statusDiv.classList.remove('hidden');
+            if (lastSyncTime) {
+                const date = new Date(lastSyncTime);
+                syncText.textContent = `上次同步：${date.toLocaleString()}`;
+            } else {
+                syncText.textContent = '上次同步：未知';
+            }
+        }
+
+        function showApp() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            loadTheme();
+            currentSelectYM = getCurrentYM();
+            bindAppEvents();
+            renderCatPanel();
+            switchCatPanel('income');
+            refreshAll();
+            updateSyncStatus();
+        }
+
+        function showAuth() {
+            document.getElementById('authContainer').classList.remove('hidden');
+            document.getElementById('appContainer').classList.add('hidden');
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('authMessage');
+            msgDiv.textContent = msg;
+            msgDiv.className = `mt-4 text-center text-sm ${type === 'error' ? 'text-expense' : 'text-income'}`;
+            setTimeout(() => {
+                msgDiv.textContent = '';
+            }, 3000);
+        }
+
+        function bindAuthEvents() {
+            document.getElementById('loginTab').onclick = () => {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginTab').classList.add('bg-white', 'dark:bg-neutral-600', 'text-primary');
+                document.getElementById('loginTab').classList.remove('text-neutral-500', 'dark:text-neutral-400');
+                document.getElementById('registerTab').classList.remove('bg-white', 'dark:bg-neutral-600', 'text-primary');
+                document.getElementById('registerTab').classList.add('text-neutral-500', 'dark:text-neutral-400');
+            };
+
+            document.getElementById('registerTab').onclick = () => {
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerTab').classList.add('bg-white', 'dark:bg-neutral-600', 'text-primary');
+                document.getElementById('registerTab').classList.remove('text-neutral-500', 'dark:text-neutral-400');
+                document.getElementById('loginTab').classList.remove('bg-white', 'dark:bg-neutral-600', 'text-primary');
+                document.getElementById('loginTab').classList.add('text-neutral-500', 'dark:text-neutral-400');
+            };
+
+            document.getElementById('loginForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('loginUsername').value;
+                const password = document.getElementById('loginPassword').value;
+                await login(username, password);
+            };
+
+            document.getElementById('registerForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('regUsername').value;
+                const password = document.getElementById('regPassword').value;
+                const email = document.getElementById('regEmail').value;
+                
+                if (password.length < 8) {
+                    showMessage('密码长度至少8位', 'error');
+                    return;
+                }
+                if (!/[A-Za-z]/.test(password)) {
+                    showMessage('密码必须包含字母', 'error');
+                    return;
+                }
+                if (!/[0-9]/.test(password)) {
+                    showMessage('密码必须包含数字', 'error');
+                    return;
+                }
+                
+                await register(username, password, email);
+            };
+        }
+
+        function bindAppEvents() {
             document.getElementById('themeToggle').onclick = ()=>{
                 const isDark = document.documentElement.classList.contains('dark');
                 setTheme(!isDark);
                 refreshAll();
-            }
-            // 月份切换
+            };
+
             const monthSel = document.getElementById('monthSelect');
             monthSel.onchange = ()=>{
                 currentSelectYM = monthSel.value;
                 refreshAll();
-            }
+            };
+
             document.getElementById('prevMonth').onclick = ()=>{
                 currentSelectYM = addMonth(currentSelectYM, -1);
                 refreshAll();
-            }
+            };
+
             document.getElementById('nextMonth').onclick = ()=>{
                 currentSelectYM = addMonth(currentSelectYM, 1);
                 refreshAll();
-            }
-            // 预算保存
+            };
+
             document.getElementById('saveBudget').onclick = ()=>{
                 const val = document.getElementById('monthBudget').value || 0;
                 saveBudget(currentSelectYM, val);
                 refreshAll();
-            }
-            // 收入/支出切换
+            };
+
             document.querySelectorAll('input[name="type"]').forEach(radio=>{
                 radio.onchange = function(){
                     switchCatPanel(this.value);
                 }
-            })
-            // 添加自定义分类按钮
+            });
+
             document.getElementById('addIncomeCatBtn').onclick = ()=> addCustomCat('income');
             document.getElementById('addExpenseCatBtn').onclick = ()=> addCustomCat('expense');
-            // 回车快速添加自定义分类
             document.getElementById('newIncomeCat').onkeydown = e=>{if(e.key==='Enter') addCustomCat('income')};
             document.getElementById('newExpenseCat').onkeydown = e=>{if(e.key==='Enter') addCustomCat('expense')};
-            // 新增账单表单提交
-            document.getElementById('billForm').onsubmit = e=>{
+
+            document.getElementById('billForm').onsubmit = async (e)=>{
                 e.preventDefault();
                 const type = document.querySelector('input[name="type"]:checked').value;
                 const amount = document.getElementById('amount').value;
@@ -690,20 +963,44 @@
                 const list = getBills();
                 list.push(newItem);
                 saveBills(list);
+                
+                if (currentUser && currentLedgerId) {
+                    try {
+                        const token = localStorage.getItem(TOKEN_KEY);
+                        await fetch(`${API_BASE}/transactions`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ledgerId: currentLedgerId,
+                                type,
+                                category,
+                                amount,
+                                remark,
+                                date,
+                                time: now.getTime()
+                            })
+                        });
+                    } catch (e) {
+                        console.log('保存到服务器失败，将在下次同步时处理');
+                    }
+                }
+                
                 document.getElementById('billForm').reset();
                 switchCatPanel('income');
                 refreshAll();
-            }
-            // 导出Excel
+            };
+
             document.getElementById('exportExcel').onclick = exportToExcel;
-            // 导出完整备份（含自定义分类）
             document.getElementById('exportJson').onclick = exportJsonBackup;
-            // 导入JSON
+            
             document.getElementById('importJson').onchange = e=>{
                 const f = e.target.files[0];
                 if(f) importJsonFile(f);
-            }
-            // 清空全部
+            };
+
             document.getElementById('clearAll').onclick = ()=>{
                 if(confirm('确定清空所有账单+自定义分类？数据无法恢复！')) {
                     saveBills([]);
@@ -711,16 +1008,46 @@
                     localStorage.removeItem(CUSTOM_CAT_KEY);
                     refreshAll();
                 }
-            }
+            };
+
+            document.getElementById('logoutBtn').onclick = () => {
+                localStorage.removeItem(TOKEN_KEY);
+                localStorage.removeItem(USER_KEY);
+                currentUser = null;
+                currentLedgerId = null;
+                lastSyncTime = null;
+                showAuth();
+            };
+
+            document.getElementById('syncBtn').onclick = async () => {
+                await syncPull();
+                await syncPush();
+            };
         }
 
-        // 初始化
-        loadTheme();
-        currentSelectYM = getCurrentYM();
-        bindEvents();
-        renderCatPanel();
-        switchCatPanel('income');
-        refreshAll();
+        async function checkAuth() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            const userStr = localStorage.getItem(USER_KEY);
+            
+            if (token && userStr) {
+                try {
+                    const result = await apiRequest('/auth/verify', 'GET');
+                    if (result.success) {
+                        currentUser = JSON.parse(userStr);
+                        await loadUserData();
+                        showApp();
+                        return;
+                    }
+                } catch (e) {
+                    console.log('token失效');
+                }
+            }
+            
+            showAuth();
+        }
+
+        bindAuthEvents();
+        checkAuth();
     </script>
 </body>
 </html>
