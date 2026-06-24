@@ -377,10 +377,15 @@
             let incomeHtml = '';
             getAllCategory('income').forEach(cat => {
                 incomeHtml += `
-                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative">
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative border-2 border-transparent peer-checked:border-${cat.color} peer-checked:ring-2 peer-checked:ring-${cat.color}/30 peer-checked:scale-[1.02] transition-all duration-200">
                     <input type="radio" name="category" value="${cat.name}" class="hidden peer">
                     <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
                     ${cat.isCustom ? `<button data-type="income" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
+                    <div class="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full border-2 border-${cat.color} hidden peer-checked:block flex items-center justify-center">
+                        <svg class="w-2.5 h-2.5 text-${cat.color}" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
                 </label>
                 `;
             });
@@ -389,10 +394,15 @@
             let expenseHtml = '';
             getAllCategory('expense').forEach(cat => {
                 expenseHtml += `
-                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative">
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative border-2 border-transparent peer-checked:border-${cat.color} peer-checked:ring-2 peer-checked:ring-${cat.color}/30 peer-checked:scale-[1.02] transition-all duration-200">
                     <input type="radio" name="category" value="${cat.name}" class="hidden peer">
                     <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
                     ${cat.isCustom ? `<button data-type="expense" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
+                    <div class="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full border-2 border-${cat.color} hidden peer-checked:block flex items-center justify-center">
+                        <svg class="w-2.5 h-2.5 text-${cat.color}" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
                 </label>
                 `;
             });
