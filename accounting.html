@@ -354,12 +354,18 @@
                 incomeWrap.classList.remove('hidden');
                 expenseWrap.classList.add('hidden');
                 const first = getAllCategory('income')[0];
-                document.querySelector(`input[name="category"][value="${first.name}"]`).checked = true;
+                if(first) {
+                    const radio = document.querySelector(`input[name="category"][value="${first.name}"]`);
+                    if(radio) radio.checked = true;
+                }
             } else {
                 incomeWrap.classList.add('hidden');
                 expenseWrap.classList.remove('hidden');
                 const first = getAllCategory('expense')[0];
-                document.querySelector(`input[name="category"][value="${first.name}"]`).checked = true;
+                if(first) {
+                    const radio = document.querySelector(`input[name="category"][value="${first.name}"]`);
+                    if(radio) radio.checked = true;
+                }
             }
         }
 
@@ -371,7 +377,8 @@
             let incomeHtml = '';
             getAllCategory('income').forEach(cat => {
                 incomeHtml += `
-                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between">
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative">
+                    <input type="radio" name="category" value="${cat.name}" class="hidden peer">
                     <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
                     ${cat.isCustom ? `<button data-type="income" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
                 </label>
@@ -382,7 +389,8 @@
             let expenseHtml = '';
             getAllCategory('expense').forEach(cat => {
                 expenseHtml += `
-                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between">
+                <label class="cat-tag bg-${cat.color}-100 dark:bg-${cat.color}-900/40 text-${cat.color} cursor-pointer flex justify-between relative">
+                    <input type="radio" name="category" value="${cat.name}" class="hidden peer">
                     <span><i class="fa ${cat.icon}"></i>${cat.name}</span>
                     ${cat.isCustom ? `<button data-type="expense" data-name="${cat.name}" class="del-custom-cat hover:text-expense"><i class="fa fa-times"></i></button>` : ''}
                 </label>
@@ -652,7 +660,19 @@
                 e.preventDefault();
                 const type = document.querySelector('input[name="type"]:checked').value;
                 const amount = document.getElementById('amount').value;
-                const category = document.querySelector('input[name="category"]:checked').value;
+                const categoryRadio = document.querySelector('input[name="category"]:checked');
+                
+                if (!amount || Number(amount) <= 0) {
+                    alert('请输入有效的金额');
+                    return;
+                }
+                
+                if (!categoryRadio) {
+                    alert('请选择一个分类');
+                    return;
+                }
+                
+                const category = categoryRadio.value;
                 const remark = document.getElementById('remark').value.trim();
                 const now = new Date();
                 const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;

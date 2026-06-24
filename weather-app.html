@@ -231,7 +231,8 @@
   </div>
   
   <script>
-    const WEATHER_PROXY_URL = window.WEATHER_CONFIG?.WEATHER_PROXY_URL || '/weather-api';
+    const WEATHER_API_BASE = 'https://m667cfw6ja.re.qweatherapi.com';
+    const WEATHER_API_KEY = '4f6fb9d0cc1a44e696e4e9ea831a16ce';
     
     function logApiResponse(apiName, url, response, data) {
       console.group(`🌤️ [天气API] ${apiName}`);
@@ -495,7 +496,7 @@
     }
     
     async function searchCity(city) {
-      const url = `${WEATHER_PROXY_URL}?path=/v7/city/search&location=${encodeURIComponent(city)}`;
+      const url = `${WEATHER_API_BASE}/v7/city/search?location=${encodeURIComponent(city)}&key=${WEATHER_API_KEY}`;
       
       try {
         const res = await fetch(url);
@@ -522,7 +523,7 @@
     }
     
     async function fetchCurrentWeather(locationId) {
-      const url = `${WEATHER_PROXY_URL}?path=/v7/weather/now&location=${locationId}`;
+      const url = `${WEATHER_API_BASE}/v7/weather/now?location=${locationId}&key=${WEATHER_API_KEY}`;
       
       try {
         const res = await fetch(url);
@@ -546,7 +547,7 @@
     }
     
     async function fetchForecastWeather(locationId) {
-      const url = `${WEATHER_PROXY_URL}?path=/v7/weather/7d&location=${locationId}`;
+      const url = `${WEATHER_API_BASE}/v7/weather/7d?location=${locationId}&key=${WEATHER_API_KEY}`;
       
       try {
         const res = await fetch(url);
@@ -867,7 +868,7 @@
     async function getCityNameByLocation(lat, lon) {
       console.log(`🌍 尝试将经纬度转换为城市: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
       
-      const url = `${WEATHER_PROXY_URL}?path=/v7/city/lookup&location=${lat},${lon}`;
+      const url = `${WEATHER_API_BASE}/v7/city/lookup?location=${lat},${lon}&key=${WEATHER_API_KEY}`;
       
       try {
         const res = await fetch(url);
