@@ -28,27 +28,27 @@ exports.handler = async (event) => {
   const endpoint = path.replace('/api/sync/', '');
 
   if (httpMethod === 'GET' && endpoint === 'status') {
-    return await handleGetStatus(userId);
+    return handleGetStatus(userId);
   }
 
   if (httpMethod === 'POST' && endpoint === 'pull') {
-    return await handlePull(userId, event);
+    return handlePull(userId, event);
   }
 
   if (httpMethod === 'POST' && endpoint === 'push') {
-    return await handlePush(userId, event);
+    return handlePush(userId, event);
   }
 
   if (httpMethod === 'POST' && endpoint === 'full-sync') {
-    return await handleFullSync(userId);
+    return handleFullSync(userId);
   }
 
   return errorResponse('方法不支持', 405);
 };
 
-async function handleGetStatus(userId) {
+function handleGetStatus(userId) {
   try {
-    const syncRecord = await getSyncRecord(userId);
+    const syncRecord = getSyncRecord(userId);
     
     return successResponse({ 
       data: { 
@@ -61,15 +61,15 @@ async function handleGetStatus(userId) {
   }
 }
 
-async function handlePull(userId, event) {
+function handlePull(userId, event) {
   try {
     const { lastSyncTime, ledgerId } = JSON.parse(event.body);
     
     let transactions = [];
     if (ledgerId) {
-      transactions = await getTransactionsByLedger(ledgerId);
+      transactions = getTransactionsByLedger(ledgerId);
     } else {
-      transactions = await getAllUserTransactions(userId);
+      transactions = getAllUserTransactions(userId);
     }
 
     if (lastSyncTime) {
@@ -77,7 +77,7 @@ async function handlePull(userId, event) {
     }
 
     const syncTime = new Date().toISOString();
-    await upsertSyncRecord(userId, syncTime);
+    upsertSyncRecord(userId, syncTime);
 
     return successResponse({ data: transactions, syncTime });
   } catch (err) {
@@ -85,7 +85,7 @@ async function handlePull(userId, event) {
   }
 }
 
-async function handlePush(userId, event) {
+function handlePush(userId, event) {
   try {
     const { transactions } = JSON.parse(event.body);
     
@@ -98,19 +98,19 @@ async function handlePush(userId, event) {
 
     for (const item of transactions) {
       try {
-        const ledger = await getLedgerById(item.ledgerId);
+        const ledger = getLedgerById(item.ledgerId);
         if (!ledger || ledger.user_id !== userId) {
           errorCount++;
           continue;
         }
 
-        const existing = await getTransactionsByLedger(item.ledgerId);
+        const existing = getTransactionsByLedger(item.ledgerId);
         const found = existing.find(t => t.date === item.date && t.time === item.time);
         
         if (found) {
-          await updateTransaction(found.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
+          updateTransaction(found.id, item.type, item.category, item.amount, item.remark, item.date, item.time);
         } else {
-          await createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
+          createTransaction(item.ledgerId, item.type, item.category, item.amount, item.remark, item.date, item.time);
         }
         successCount++;
       } catch (err) {
@@ -119,7 +119,7 @@ async function handlePush(userId, event) {
     }
 
     const syncTime = new Date().toISOString();
-    await upsertSyncRecord(userId, syncTime);
+    upsertSyncRecord(userId, syncTime);
 
     return successResponse({
       message: `同步完成: 成功 ${successCount}, 失败 ${errorCount}`,
@@ -131,13 +131,13 @@ async function handlePush(userId, event) {
   }
 }
 
-async function handleFullSync(userId) {
+function handleFullSync(userId) {
   try {
-    const ledgers = await getLedgersByUserId(userId);
-    const transactions = await getAllUserTransactions(userId);
+    const ledgers = getLedgersByUserId(userId);
+    const transactions = getAllUserTransactions(userId);
 
     const syncTime = new Date().toISOString();
-    await upsertSyncRecord(userId, syncTime);
+    upsertSyncRecord(userId, syncTime);
 
     return successResponse({
       data: {

@@ -28,20 +28,20 @@ exports.handler = async (event) => {
   const endpoint = path.replace('/api/backup/', '');
 
   if (httpMethod === 'GET' && endpoint === 'export') {
-    return await handleExport(userId);
+    return handleExport(userId);
   }
 
   if (httpMethod === 'POST' && endpoint === 'import') {
-    return await handleImport(userId, event);
+    return handleImport(userId, event);
   }
 
   return errorResponse('方法不支持', 405);
 };
 
-async function handleExport(userId) {
+function handleExport(userId) {
   try {
-    const ledgers = await getLedgersByUserId(userId);
-    const transactions = await getAllUserTransactions(userId);
+    const ledgers = getLedgersByUserId(userId);
+    const transactions = getAllUserTransactions(userId);
 
     const backupData = {
       exportTime: new Date().toISOString(),
@@ -56,7 +56,7 @@ async function handleExport(userId) {
   }
 }
 
-async function handleImport(userId, event) {
+function handleImport(userId, event) {
   try {
     const { ledgers, transactions } = JSON.parse(event.body);
     
@@ -70,13 +70,13 @@ async function handleImport(userId, event) {
 
     for (const ledger of ledgers) {
       try {
-        const existing = await getLedgersByUserId(userId);
+        const existing = getLedgersByUserId(userId);
         const found = existing.find(l => l.name === ledger.name);
         if (found) {
           ledgerMap[ledger.id] = found.id;
           skipCount++;
         } else {
-          const newLedger = await createLedger(userId, ledger.name, ledger.description);
+          const newLedger = createLedger(userId, ledger.name, ledger.description);
           ledgerMap[ledger.id] = newLedger.id;
           successCount++;
         }
@@ -89,12 +89,12 @@ async function handleImport(userId, event) {
       try {
         const actualLedgerId = ledgerMap[trans.ledgerId] || trans.ledgerId;
         
-        const existing = await getAllUserTransactions(userId);
+        const existing = getAllUserTransactions(userId);
         const found = existing.find(t => t.date === trans.date && t.time === trans.time);
         if (found) {
           skipCount++;
         } else {
-          await createTransaction(actualLedgerId, trans.type, trans.category, trans.amount, trans.remark, trans.date, trans.time);
+          createTransaction(actualLedgerId, trans.type, trans.category, trans.amount, trans.remark, trans.date, trans.time);
           successCount++;
         }
       } catch (err) {

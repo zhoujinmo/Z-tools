@@ -29,40 +29,40 @@ exports.handler = async (event) => {
   const ledgerId = pathParts[pathParts.length - 1];
 
   if (httpMethod === 'GET' && !isNaN(ledgerId)) {
-    return await handleGetLedger(userId, parseInt(ledgerId));
+    return handleGetLedger(userId, parseInt(ledgerId));
   }
 
   if (httpMethod === 'GET') {
-    return await handleListLedgers(userId);
+    return handleListLedgers(userId);
   }
 
   if (httpMethod === 'POST') {
-    return await handleCreateLedger(userId, event);
+    return handleCreateLedger(userId, event);
   }
 
   if (httpMethod === 'PUT' && !isNaN(ledgerId)) {
-    return await handleUpdateLedger(userId, parseInt(ledgerId), event);
+    return handleUpdateLedger(userId, parseInt(ledgerId), event);
   }
 
   if (httpMethod === 'DELETE' && !isNaN(ledgerId)) {
-    return await handleDeleteLedger(userId, parseInt(ledgerId));
+    return handleDeleteLedger(userId, parseInt(ledgerId));
   }
 
   return errorResponse('方法不支持', 405);
 };
 
-async function handleListLedgers(userId) {
+function handleListLedgers(userId) {
   try {
-    const ledgers = await getLedgersByUserId(userId);
+    const ledgers = getLedgersByUserId(userId);
     return successResponse({ data: ledgers });
   } catch (err) {
     return errorResponse('获取账本列表失败: ' + err.message, 500);
   }
 }
 
-async function handleGetLedger(userId, ledgerId) {
+function handleGetLedger(userId, ledgerId) {
   try {
-    const ledger = await getLedgerById(ledgerId);
+    const ledger = getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
@@ -74,7 +74,7 @@ async function handleGetLedger(userId, ledgerId) {
   }
 }
 
-async function handleCreateLedger(userId, event) {
+function handleCreateLedger(userId, event) {
   try {
     const { name, description } = JSON.parse(event.body);
 
@@ -82,12 +82,12 @@ async function handleCreateLedger(userId, event) {
       return errorResponse('账本名称不能为空');
     }
 
-    const existing = await getLedgersByUserId(userId);
+    const existing = getLedgersByUserId(userId);
     if (existing.find(l => l.name === name)) {
       return errorResponse('账本名称已存在');
     }
 
-    const ledger = await createLedger(userId, name, description);
+    const ledger = createLedger(userId, name, description);
 
     return successResponse({
       data: { id: ledger.id, name, description }
@@ -97,7 +97,7 @@ async function handleCreateLedger(userId, event) {
   }
 }
 
-async function handleUpdateLedger(userId, ledgerId, event) {
+function handleUpdateLedger(userId, ledgerId, event) {
   try {
     const { name, description } = JSON.parse(event.body);
 
@@ -105,18 +105,18 @@ async function handleUpdateLedger(userId, ledgerId, event) {
       return errorResponse('账本名称不能为空');
     }
 
-    const existing = await getLedgerById(ledgerId);
+    const existing = getLedgerById(ledgerId);
     if (!existing || existing.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const ledgers = await getLedgersByUserId(userId);
+    const ledgers = getLedgersByUserId(userId);
     const otherLedger = ledgers.find(l => l.name === name && l.id !== ledgerId);
     if (otherLedger) {
       return errorResponse('账本名称已存在');
     }
 
-    await updateLedger(ledgerId, name, description);
+    updateLedger(ledgerId, name, description);
 
     return successResponse({}, '账本更新成功');
   } catch (err) {
@@ -124,14 +124,14 @@ async function handleUpdateLedger(userId, ledgerId, event) {
   }
 }
 
-async function handleDeleteLedger(userId, ledgerId) {
+function handleDeleteLedger(userId, ledgerId) {
   try {
-    const ledger = await getLedgerById(ledgerId);
+    const ledger = getLedgerById(ledgerId);
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    await deleteLedger(ledgerId);
+    deleteLedger(ledgerId);
 
     return successResponse({}, '账本删除成功');
   } catch (err) {

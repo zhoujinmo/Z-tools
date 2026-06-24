@@ -32,40 +32,40 @@ exports.handler = async (event) => {
     const ledgerId = parseInt(pathParts[ledgerIdx + 1]);
     
     if (httpMethod === 'GET' && path.includes('/stats')) {
-      return await handleGetStats(userId, ledgerId, queryStringParameters);
+      return handleGetStats(userId, ledgerId, queryStringParameters);
     }
     
     if (httpMethod === 'GET') {
-      return await handleGetByLedger(userId, ledgerId, queryStringParameters);
+      return handleGetByLedger(userId, ledgerId, queryStringParameters);
     }
   }
 
   const transactionId = pathParts[pathParts.length - 1];
 
   if (httpMethod === 'POST') {
-    return await handleCreate(userId, event);
+    return handleCreate(userId, event);
   }
 
   if (httpMethod === 'PUT' && !isNaN(transactionId)) {
-    return await handleUpdate(userId, parseInt(transactionId), event);
+    return handleUpdate(userId, parseInt(transactionId), event);
   }
 
   if (httpMethod === 'DELETE' && !isNaN(transactionId)) {
-    return await handleDelete(userId, parseInt(transactionId));
+    return handleDelete(userId, parseInt(transactionId));
   }
 
   return errorResponse('方法不支持', 405);
 };
 
-async function handleGetByLedger(userId, ledgerId, query) {
+function handleGetByLedger(userId, ledgerId, query) {
   try {
-    const ledger = await getLedgerById(ledgerId);
+    const ledger = getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const transactions = await getTransactionsByLedger(ledgerId, query?.month);
+    const transactions = getTransactionsByLedger(ledgerId, query?.month);
 
     return successResponse({ data: transactions });
   } catch (err) {
@@ -73,15 +73,15 @@ async function handleGetByLedger(userId, ledgerId, query) {
   }
 }
 
-async function handleGetStats(userId, ledgerId, query) {
+function handleGetStats(userId, ledgerId, query) {
   try {
-    const ledger = await getLedgerById(ledgerId);
+    const ledger = getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const stats = await getTransactionStats(ledgerId, query?.month);
+    const stats = getTransactionStats(ledgerId, query?.month);
 
     return successResponse({ data: stats });
   } catch (err) {
@@ -89,7 +89,7 @@ async function handleGetStats(userId, ledgerId, query) {
   }
 }
 
-async function handleCreate(userId, event) {
+function handleCreate(userId, event) {
   try {
     const { ledgerId, type, category, amount, remark, date, time } = JSON.parse(event.body);
 
@@ -97,13 +97,13 @@ async function handleCreate(userId, event) {
       return errorResponse('缺少必要参数');
     }
 
-    const ledger = await getLedgerById(ledgerId);
+    const ledger = getLedgerById(ledgerId);
     
     if (!ledger || ledger.user_id !== userId) {
       return errorResponse('账本不存在', 404);
     }
 
-    const transaction = await createTransaction(ledgerId, type, category, amount, remark, date, time);
+    const transaction = createTransaction(ledgerId, type, category, amount, remark, date, time);
 
     return successResponse({
       data: { id: transaction.id }
@@ -113,11 +113,11 @@ async function handleCreate(userId, event) {
   }
 }
 
-async function handleUpdate(userId, transactionId, event) {
+function handleUpdate(userId, transactionId, event) {
   try {
     const { type, category, amount, remark, date, time } = JSON.parse(event.body);
 
-    await updateTransaction(transactionId, type, category, amount, remark, date, time);
+    updateTransaction(transactionId, type, category, amount, remark, date, time);
 
     return successResponse({}, '交易记录更新成功');
   } catch (err) {
@@ -125,9 +125,9 @@ async function handleUpdate(userId, transactionId, event) {
   }
 }
 
-async function handleDelete(userId, transactionId) {
+function handleDelete(userId, transactionId) {
   try {
-    const success = await deleteTransaction(transactionId);
+    const success = deleteTransaction(transactionId);
     
     if (!success) {
       return errorResponse('交易记录不存在', 404);

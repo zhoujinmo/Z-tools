@@ -9,7 +9,6 @@
     "build": "npm install"
   },
   "dependencies": {
-    "@netlify/kv": "^0.1.0",
     "sql.js": "^1.10.3",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
