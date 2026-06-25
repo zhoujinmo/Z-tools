@@ -42,7 +42,7 @@ export default function GameCanvas() {
   const engineRef = useRef<GameEngine | null>(null);
   const [state, setState] = useState<GameState>("ready");
   const [score, setScore] = useState(0);
-  const [skinId] = useState<string>(getSavedSkinId());
+  const [skinId, setSkinId] = useState<string>("default");
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -72,6 +72,11 @@ export default function GameCanvas() {
         }
       } catch { /* ignore */ }
     })();
+  }, []);
+
+  /** 仅在客户端挂载后读取皮肤，避免 hydration 不匹配 */
+  useEffect(() => {
+    setSkinId(getSavedSkinId());
   }, []);
 
   /** 初始化引擎 */

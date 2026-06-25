@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaArrowLeft, FaCheck, FaLock } from "react-icons/fa";
 import { SKINS, DEFAULT_SKIN, getSkinById, getUnlockedSkins, getLockedSkins } from "../skins";
 import type { SkinStyle } from "@/lib/game/types";
@@ -22,8 +22,13 @@ function saveSkinId(skinId: string): void {
  * 皮肤选择页面
  */
 export default function SkinSelectPage() {
-  const [selectedSkin, setSelectedSkin] = useState<string>(getSavedSkinId());
+  const [selectedSkin, setSelectedSkin] = useState<string>(DEFAULT_SKIN.id);
   const [previewSkin, setPreviewSkin] = useState<SkinStyle | null>(null);
+
+  // 仅在客户端挂载后读取 localStorage，避免 hydration 不匹配
+  useEffect(() => {
+    setSelectedSkin(getSavedSkinId());
+  }, []);
 
   const unlockedSkins = getUnlockedSkins();
   const lockedSkins = getLockedSkins();
