@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/auth";
 import type { ApiResponse } from "@/lib/types";
 
 // GET /api/user/settings — 获取用户设置
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { user, errorResponse } = await getAuthUser();
   if (errorResponse) return errorResponse;
 

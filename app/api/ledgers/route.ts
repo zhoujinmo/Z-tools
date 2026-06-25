@@ -3,7 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { getLedgersByUserId, createLedger } from "@/lib/db";
 import type { ApiResponse, Ledger } from "@/lib/types";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { user, errorResponse } = await getAuthUser();
   if (errorResponse) return errorResponse;
 

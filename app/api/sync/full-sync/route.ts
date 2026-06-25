@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { getAllUserTransactions, upsertSyncRecord } from "@/lib/db";
 import type { ApiResponse, Ledger, Transaction } from "@/lib/types";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const { user, errorResponse } = await getAuthUser();
   if (errorResponse) return errorResponse;
 

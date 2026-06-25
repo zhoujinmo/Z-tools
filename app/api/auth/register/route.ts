@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validatePassword } from "@/lib/auth";
 import type { ApiResponse, AuthUser } from "@/lib/types";
@@ -30,84 +29,96 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 使用 service_role 客户端检查用户名是否已存在（绕过 RLS）
+    const registerEmail = email || `${phone}@phone.user`;
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const secretKey = process.env.SUPABASE_SECRET_KEY!;
+
+    // 检查用户名是否已存在
     try {
       const admin = createAdminClient();
-      const { data: existingProfile } = await admin
+      const { data: existing } = await admin
         .from("profiles")
         .select("id")
         .eq("username", username)
         .maybeSingle();
-
-      if (existingProfile) {
+      if (existing) {
         return NextResponse.json<ApiResponse>(
           { success: false, message: "用户名已存在" },
           { status: 400 }
         );
       }
-    } catch (dbErr) {
-      // profiles 表可能不存在 → 跳过检查，继续注册
-      console.warn("[register] profiles 表检查失败（可能未执行迁移）:", dbErr);
-    }
+    } catch { /* profiles 表可能不存在 */ }
 
-    const supabase = createClient();
-    const registerEmail = email || `${phone}@phone.user`;
-
-    const { data, error } = await supabase.auth.signUp({
-      email: registerEmail,
-      password,
+    // 使用 Supabase Admin API 创建用户（绕过数据库触发器）
+    const adminRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: secretKey,
+        Authorization: `Bearer ${secretKey}`,
+      },
+      body: JSON.stringify({
+        email: registerEmail,
+        password,
+        email_confirm: true,
+        user_metadata: { username },
+      }),
     });
 
-    if (error) {
+    const userJson = await adminRes.json();
+
+    if (!adminRes.ok || !userJson.id) {
       const msg =
-        error.code === "user_already_exists"
+        userJson.code === "email_exists" || userJson.msg?.includes("already")
           ? "该邮箱已被注册"
-          : error.message;
+          : (userJson.msg || userJson.message || "注册失败");
       return NextResponse.json<ApiResponse>(
         { success: false, message: msg },
         { status: 400 }
       );
     }
 
-    if (!data.user) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, message: "注册失败，请稍后重试" },
-        { status: 500 }
-      );
-    }
+    const userId: string = userJson.id;
 
-    // 使用 admin 客户端更新 profile（绕过 RLS，即使是新创建的用户也能写入）
+    // 写入 profile 和默认账本
     try {
       const admin = createAdminClient();
 
-      // 如果触发器未创建 profile，手动插入
-      await admin.from("profiles").upsert(
+      const { error: pfError } = await admin.from("profiles").upsert(
         {
-          id: data.user.id,
+          id: userId,
           username,
-          email: email || null,
+          email: registerEmail,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
       );
 
-      // 创建默认账本
-      await admin.from("ledgers").insert({
-        user_id: data.user.id,
+      if (pfError) {
+        console.error("[register] profile upsert 失败:", pfError.message, pfError.details);
+      } else {
+        console.log("[register] profile 写入成功, userId=", userId);
+      }
+
+      const { error: ldgError } = await admin.from("ledgers").insert({
+        user_id: userId,
         name: "我的账本",
         description: "",
       });
-    } catch (dbErr) {
-      // 表不存在不影响注册（用户已创建），后续迁移运行后再用
-      console.warn("[register] 写 profile/ledger 失败（可能未执行迁移）:", dbErr);
+
+      if (ldgError) {
+        console.error("[register] ledgers insert 失败:", ldgError.message, ldgError.details);
+      }
+    } catch (dbErr: any) {
+      console.error("[register] 写 profile/ledger 异常:", dbErr?.message || dbErr, dbErr?.stack?.slice(0, 200));
+      return NextResponse.json<ApiResponse>(
+        { success: false, message: "用户已创建但数据初始化失败: " + (dbErr?.message || "未知错误") },
+        { status: 500 }
+      );
     }
 
-    const user: AuthUser = {
-      id: data.user.id,
-      username,
-      email: email || null,
-    };
+    const user: AuthUser = { id: userId, username, email: email || null };
 
     return NextResponse.json<ApiResponse & { user: AuthUser }>({
       success: true,
@@ -115,7 +126,7 @@ export async function POST(request: NextRequest) {
       user,
     });
   } catch (err) {
-    console.error("[register] 未预期错误:", err);
+    console.error("[register]", err instanceof Error ? err.message : err);
     return NextResponse.json<ApiResponse>(
       { success: false, message: "服务器错误" },
       { status: 500 }

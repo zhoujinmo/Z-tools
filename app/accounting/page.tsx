@@ -11,58 +11,53 @@ export default function AccountingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    let cancelled = false;
 
-    async function checkSession() {
+    async function init() {
       try {
+        const supabase = createClient();
+
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
+        if (cancelled) return;
+
         if (session?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("username, email")
-            .eq("id", session.user.id)
-            .single();
+          let username = "";
+          let email = session.user.email || "";
+
+          try {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("username, email")
+              .eq("id", session.user.id)
+              .maybeSingle();
+            if (profile) {
+              username = profile.username || "";
+              email = profile.email || email;
+            }
+          } catch {
+            // profiles 表可能不存在
+          }
 
           setUser({
             id: session.user.id,
-            username: profile?.username || session.user.email || "",
-            email: profile?.email || session.user.email || null,
+            username: username || email,
+            email,
           });
         }
       } catch {
-        // session check failed, show auth form
+        // session check failed
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    checkSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username, email")
-          .eq("id", session.user.id)
-          .single();
-
-        setUser({
-          id: session.user.id,
-          username: profile?.username || session.user.email || "",
-          email: profile?.email || session.user.email || null,
-        });
-      } else {
-        setUser(null);
-      }
-    });
+    init();
 
     return () => {
-      subscription.unsubscribe();
+      cancelled = true;
     };
   }, []);
 
