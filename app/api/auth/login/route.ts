@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
           .eq("username", username)
           .maybeSingle();
 
-        if (profile?.email) {
-          loginEmail = profile.email;
+        if ((profile as { email?: string })?.email) {
+          loginEmail = (profile as { email: string }).email;
         }
       } catch {
         console.warn("[login] profiles 查询失败");

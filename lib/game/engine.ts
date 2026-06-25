@@ -218,6 +218,7 @@ export class GameEngine {
   private gameOver(): void {
     this.state = "gameover";
     this.stop();
+    stopBgm();
     this.render();
     this.notifyStateChange();
     this.onGameOver?.(this.score, {
