@@ -6,6 +6,7 @@ import {
   FaBolt,
   FaEnvelope,
   FaUsers,
+  FaRocket,
 } from "react-icons/fa";
 
 export default function HomePage() {
@@ -67,6 +68,24 @@ export default function HomePage() {
             </p>
             <span className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-medium">
               开始使用
+            </span>
+          </Link>
+
+          <Link
+            href="/game/space-escape"
+            className="block bg-white/95 backdrop-blur rounded-[20px] p-6 cursor-pointer shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl fade-in delay-2"
+          >
+            <div className="w-20 h-20 rounded-[20px] flex items-center justify-center mb-4 bg-gradient-to-br from-purple-500 to-indigo-600">
+              <FaRocket className="text-4xl text-white" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              太空逃亡游戏
+            </h3>
+            <p className="text-gray-500 mb-4">
+              控制飞船躲避陨石，获取高分，解锁炫酷皮肤，支持触屏操作和背景音乐
+            </p>
+            <span className="inline-block bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-xl font-medium">
+              开始游戏
             </span>
           </Link>
 
