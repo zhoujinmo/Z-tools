@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 匹配所有路径，排除静态资源和 Next.js 内部路径
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // 仅对记账页面启用中间件（避免 Supabase 在 Edge Runtime 上崩溃影响其他页面）
+    "/accounting/:path*",
   ],
 };
