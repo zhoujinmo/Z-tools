@@ -1,13 +1,11 @@
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+// middleware 已禁用 Supabase：Edge Runtime 不支持 process.version
+// 如需恢复认证中间件，需使用 Edge 兼容的 Supabase 客户端
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+export function middleware(request: NextRequest) {
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    // 仅对记账页面启用中间件（避免 Supabase 在 Edge Runtime 上崩溃影响其他页面）
-    "/accounting/:path*",
-  ],
+  matcher: [], // 不匹配任何路由
 };
