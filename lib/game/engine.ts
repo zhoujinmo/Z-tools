@@ -379,28 +379,14 @@ export class GameEngine {
     ctx.restore();
   }
 
+  /**
+   * 渲染准备界面（仅绘制背景和飞船，文字由 HTML overlay 显示）
+   */
   renderReady(): void {
-    this.render();
     const { ctx } = this;
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, GAME_CONFIG.width, GAME_CONFIG.height);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 36px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("太空逃亡", GAME_CONFIG.width / 2, GAME_CONFIG.height / 2 - 40);
-    ctx.font = "18px sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText(
-      "方向键控制飞船移动，躲避陨石",
-      GAME_CONFIG.width / 2,
-      GAME_CONFIG.height / 2 + 4
-    );
-    ctx.fillText(
-      "点击下方开始游戏按钮",
-      GAME_CONFIG.width / 2,
-      GAME_CONFIG.height / 2 + 32
-    );
-    ctx.restore();
+    // 绘制背景
+    drawBackground(ctx, this.stars, this.nebulae);
+    // 绘制飞船
+    drawPlayer(ctx, this.player, this.skin, this.skinImage, this.skinImageLoaded);
   }
 }
