@@ -56,12 +56,8 @@ export default function WeatherPage() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // 加载搜索历史
+  // 初始化
   useEffect(() => {
-    const stored = localStorage.getItem("weather_search_history");
-    if (stored) {
-      setHistory(JSON.parse(stored).slice(0, 5));
-    }
     // 默认加载北京天气
     fetchWeather("北京");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,13 +161,10 @@ export default function WeatherPage() {
   }, []);
 
   function addToHistory(city: string) {
-    const stored = localStorage.getItem("weather_search_history");
-    let list: string[] = stored ? JSON.parse(stored) : [];
-    list = list.filter((c) => c !== city);
-    list.unshift(city);
-    list = list.slice(0, 10);
-    localStorage.setItem("weather_search_history", JSON.stringify(list));
-    setHistory(list.slice(0, 5));
+    setHistory((prev) => {
+      const filtered = prev.filter((c) => c !== city);
+      return [city, ...filtered].slice(0, 5);
+    });
   }
 
   function handleSearchInput(value: string) {

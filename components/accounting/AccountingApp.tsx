@@ -55,10 +55,7 @@ ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Le
 
 // ===== 常量定义 =====
 
-const STORAGE_KEY = "simple-bill-data";
 const THEME_KEY = "bill-theme";
-const BUDGET_KEY = "bill-budget";
-const CUSTOM_CAT_KEY = "bill-custom-category";
 
 const iconMap: Record<string, IconType> = {
   FaBriefcase,
@@ -222,7 +219,7 @@ export default function AccountingApp({ user }: AccountingAppProps) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // 加载主题
+    // 加载主题（唯一保留 localStorage 的项，客户端偏好）
     const savedTheme = localStorage.getItem(THEME_KEY);
     const dark = savedTheme === "dark";
     setIsDark(dark);
@@ -232,52 +229,59 @@ export default function AccountingApp({ user }: AccountingAppProps) {
       document.documentElement.classList.remove("dark");
     }
 
-    // 加载本地数据
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        setBills(JSON.parse(raw));
-      } catch {
-        setBills([]);
-      }
-    }
-
-    // 加载自定义分类
-    const customRaw = localStorage.getItem(CUSTOM_CAT_KEY);
-    if (customRaw) {
-      try {
-        setCustomCategory(JSON.parse(customRaw));
-      } catch {
-        // ignore
-      }
-    }
-
-    // 加载用户数据并同步
-    loadUserData();
+    // 从 Supabase 加载所有数据
+    loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ===== 数据持久化 =====
+  async function loadAllData() {
+    // 加载用户设置（预算 + 自定义分类）
+    try {
+      const res = await apiRequest("/user/settings", "GET");
+      if (res.success && res.data) {
+        const s = res.data;
+        if (s.customCategory) setCustomCategory(s.customCategory);
+        if (s.budgets) setBudgets(s.budgets);
+      }
+    } catch { /* ignore */ }
+
+    // 加载账本和账单
+    try {
+      const ledgers = await apiRequest("/ledgers", "GET");
+      if (ledgers.success && ledgers.data.length > 0) {
+        setCurrentLedgerId(ledgers.data[0].id);
+        await syncPull();
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ===== 数据持久化（全部通过 Supabase API）=====
+
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
 
   function saveBills(list: BillItem[]) {
     setBills(list);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   }
 
-  function saveCustomCategory(obj: CustomCategoryStore) {
+  async function saveCustomCategory(obj: CustomCategoryStore) {
     setCustomCategory(obj);
-    localStorage.setItem(CUSTOM_CAT_KEY, JSON.stringify(obj));
+    await saveSettings({ customCategory: obj });
   }
 
-  function saveBudget(ym: string, num: number) {
-    const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || "{}");
-    budgetObj[ym] = Number(num);
-    localStorage.setItem(BUDGET_KEY, JSON.stringify(budgetObj));
+  async function saveBudget(ym: string, num: number) {
+    const updated = { ...budgets, [ym]: Number(num) };
+    setBudgets(updated);
+    await saveSettings({ budgets: updated });
   }
 
   function getBudget(ym: string): number {
-    const budgetObj = JSON.parse(localStorage.getItem(BUDGET_KEY) || "{}");
-    return budgetObj[ym] || 0;
+    return budgets[ym] || 0;
+  }
+
+  async function saveSettings(partial: Record<string, unknown>) {
+    try {
+      await apiRequest("/user/settings", "PUT", partial);
+    } catch { /* ignore */ }
   }
 
   function setTheme(dark: boolean) {
@@ -402,20 +406,6 @@ export default function AccountingApp({ user }: AccountingAppProps) {
   }
 
   // ===== 数据同步 =====
-
-  async function loadUserData() {
-    try {
-      const ledgers = await apiRequest("/ledgers", "GET");
-      if (ledgers.success && ledgers.data.length > 0) {
-        setCurrentLedgerId(ledgers.data[0].id);
-        saveBills([]);
-        setLastSyncTime(null);
-        await syncPull();
-      }
-    } catch {
-      // 加载账本列表失败
-    }
-  }
 
   async function syncPull() {
     if (!currentLedgerId) return;
@@ -620,7 +610,7 @@ export default function AccountingApp({ user }: AccountingAppProps) {
         if (!raw.bills || !Array.isArray(raw.bills)) throw new Error("文件格式错误");
         saveBills(raw.bills);
         if (raw.customCategory) saveCustomCategory(raw.customCategory);
-        alert("导入成功！账单与自定义分类已恢复");
+        alert("数据已导入");
       } catch {
         alert("导入失败，备份文件损坏");
       }
@@ -631,9 +621,9 @@ export default function AccountingApp({ user }: AccountingAppProps) {
   function handleClearAll() {
     if (confirm("确定清空所有账单+自定义分类？数据无法恢复！")) {
       saveBills([]);
-      localStorage.removeItem(BUDGET_KEY);
-      localStorage.removeItem(CUSTOM_CAT_KEY);
-      setCustomCategory({ income: [], expense: [] });
+      saveCustomCategory({ income: [], expense: [] });
+      setBudgets({});
+      saveSettings({ budgets: {}, customCategory: { income: [], expense: [] } });
     }
   }
 
@@ -645,11 +635,6 @@ export default function AccountingApp({ user }: AccountingAppProps) {
     } catch {
       // ignore
     }
-    // 清除本地状态
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(BUDGET_KEY);
-    localStorage.removeItem(CUSTOM_CAT_KEY);
-    // 刷新页面回到认证界面
     window.location.reload();
   }
 

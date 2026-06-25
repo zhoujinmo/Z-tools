@@ -60,7 +60,7 @@ export interface AuthUser {
   email: string | null;
 }
 
-// 前端使用的交易记录格式（与 localStorage 兼容）
+// 前端使用的交易记录格式
 export interface ClientTransaction {
   id?: string;
   ledgerId?: string;

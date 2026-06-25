@@ -62,12 +62,6 @@ export function addMonth(ym: string, step: number): string {
   return `${y}-${String(m).padStart(2, "0")}`;
 }
 
-// localStorage keys
-export const STORAGE_KEY = "simple-bill-data";
-export const THEME_KEY = "bill-theme";
-export const BUDGET_KEY = "bill-budget";
-export const CUSTOM_CAT_KEY = "bill-custom-category";
-
 export interface Bill {
   id?: string;
   type: TransactionType;
