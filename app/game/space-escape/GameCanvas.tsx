@@ -7,16 +7,22 @@ import type { GameState, GameStats } from "@/lib/game/types";
 import { getSkinById, getSavedSkinId, getSkinProgress, saveSkinProgress, checkAndUnlockSkins } from "./skins";
 import type { SkinProgress } from "./skins";
 import type { AuthUser } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import GameAuthModal from "./GameAuthModal";
 
-const CURRENT_USER_KEY = "space-escape-current-user";
-
-/** 从 localStorage 读取当前用户 */
-function getStoredUser(): AuthUser | null {
-  if (typeof window === "undefined") return null;
+/** 从 Supabase session 获取当前用户 */
+async function getSessionUser(): Promise<AuthUser | null> {
   try {
-    const raw = localStorage.getItem(CURRENT_USER_KEY);
-    if (raw) return JSON.parse(raw);
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      const { user } = data.session;
+      return {
+        id: user.id,
+        username: user.user_metadata?.username || user.email?.split("@")[0] || "",
+        email: user.email || null,
+      };
+    }
   } catch { /* ignore */ }
   return null;
 }
@@ -39,7 +45,7 @@ export default function GameCanvas() {
   const [skinId] = useState<string>(getSavedSkinId());
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(getStoredUser);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobile] = useState(isTouchDevice);
   const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({
@@ -48,6 +54,25 @@ export default function GameCanvas() {
     ArrowLeft: false,
     ArrowRight: false,
   });
+
+  /** 加载用户（Supabase session 优先，其次 localStorage guest） */
+  useEffect(() => {
+    (async () => {
+      const sessionUser = await getSessionUser();
+      if (sessionUser) {
+        setUser(sessionUser);
+        return;
+      }
+      // 检查 localStorage 中的游客记录
+      try {
+        const raw = localStorage.getItem("space-escape-guest");
+        if (raw) {
+          const guest: AuthUser = JSON.parse(raw);
+          if (guest.id === "guest") setUser(guest);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   /** 初始化引擎 */
   useEffect(() => {
@@ -136,9 +161,8 @@ export default function GameCanvas() {
     engineRef.current?.setKey(key as never, false);
   };
 
-  /** 持久化用户到 localStorage */
+  /** 持久化用户 */
   const persistUser = (u: AuthUser) => {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(u));
     setUser(u);
   };
 
@@ -172,7 +196,7 @@ export default function GameCanvas() {
     setUnlockMsg(null);
   };
 
-  /** 游戏结束：更新进度、解锁皮肤 */
+  /** 游戏结束：更新进度、解锁皮肤、提交分数 */
   const handleGameOver = useCallback(
     async (finalScore: number, stats: GameStats) => {
       setSubmitMsg(null);
@@ -202,7 +226,23 @@ export default function GameCanvas() {
         return;
       }
 
-      setSubmitMsg("分数已记录！");
+      // 提交分数到 Supabase
+      try {
+        const res = await fetch("/api/game/scores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ score: finalScore }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setSubmitMsg("分数已记录到排行榜！");
+          window.dispatchEvent(new CustomEvent("score-submitted"));
+        } else {
+          setSubmitMsg(json.message || "分数提交失败");
+        }
+      } catch {
+        setSubmitMsg("网络错误，分数提交失败");
+      }
     },
     [user]
   );
@@ -218,17 +258,28 @@ export default function GameCanvas() {
         <div className="text-slate-400 text-xs sm:text-sm">
           {user ? <span>欢迎，{user.username}</span> : <span>未登录</span>}
         </div>
-        {user && (
+        {user && user.id !== "guest" && (
           <button
-            onClick={() => {
-              localStorage.removeItem(CURRENT_USER_KEY);
-              localStorage.removeItem("space-escape-guest");
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
               setUser(null);
               handleBackToReady();
             }}
             className="text-slate-400 hover:text-white text-xs sm:text-sm transition min-h-[44px] px-3 flex items-center"
           >
             退出登录
+          </button>
+        )}
+        {user && user.id === "guest" && (
+          <button
+            onClick={() => {
+              localStorage.removeItem("space-escape-guest");
+              setUser(null);
+              handleBackToReady();
+            }}
+            className="text-slate-400 hover:text-white text-xs sm:text-sm transition min-h-[44px] px-3 flex items-center"
+          >
+            退出游客
           </button>
         )}
       </div>

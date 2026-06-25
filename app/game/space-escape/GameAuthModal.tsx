@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { AuthUser } from "@/lib/types";
+import type { AuthUser, ApiResponse } from "@/lib/types";
 
 interface GameAuthModalProps {
   isOpen: boolean;
@@ -9,44 +9,8 @@ interface GameAuthModalProps {
   onAuthSuccess: (user: AuthUser) => void;
 }
 
-interface LocalUser {
-  id: string;
-  username: string;
-  email: string | null;
-  phone: string | null;
-  password: string;
-  createdAt: number;
-}
-
 type AuthMode = "login" | "register";
 type RegisterType = "email" | "phone";
-
-const USER_STORAGE_KEY = "space-escape-users";
-const CURRENT_USER_KEY = "space-escape-current-user";
-
-function getUsers(): LocalUser[] {
-  try {
-    const data = localStorage.getItem(USER_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: LocalUser[]): void {
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
-}
-
-function validatePassword(password: string): number {
-  let strength = 0;
-  if (password.length >= 8) strength++;
-  if (password.length >= 12) strength++;
-  if (/[A-Z]/.test(password)) strength++;
-  if (/[a-z]/.test(password)) strength++;
-  if (/[0-9]/.test(password)) strength++;
-  if (/[^A-Za-z0-9]/.test(password)) strength++;
-  return Math.min(strength, 5);
-}
 
 export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAuthModalProps) {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -56,13 +20,10 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [captcha, setCaptcha] = useState("");
-  const [captchaCode, setCaptchaCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [loading, setLoading] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -73,7 +34,6 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
       setConfirmPassword("");
       setEmail("");
       setPhone("");
-      setCaptcha("");
       setMessage("");
       setMessageType("");
     }
@@ -85,23 +45,6 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
     };
   }, []);
 
-  useEffect(() => {
-    setPasswordStrength(validatePassword(password));
-  }, [password]);
-
-  useEffect(() => {
-    generateCaptcha();
-  }, [mode, registerType]);
-
-  function generateCaptcha() {
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let code = "";
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCaptchaCode(code);
-  }
-
   function showMessage(msg: string, type: "success" | "error") {
     setMessage(msg);
     setMessageType(type);
@@ -112,6 +55,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
     }, 3000);
   }
 
+  /** 登录：调用 Supabase Auth API */
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!username || !password) {
@@ -121,30 +65,33 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
 
     setLoading(true);
     try {
-      const users = getUsers();
-      const user = users.find(u => u.username === username && u.password === password);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const json: ApiResponse & { user?: AuthUser } = await res.json();
 
-      if (user) {
-        const authUser: AuthUser = { id: user.id, username: user.username, email: user.email };
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(authUser));
+      if (json.success && json.user) {
         showMessage("登录成功", "success");
         setTimeout(() => {
-          onAuthSuccess(authUser);
+          onAuthSuccess(json.user!);
           onClose();
-        }, 1000);
+        }, 800);
       } else {
-        showMessage("用户名或密码错误", "error");
+        showMessage(json.message || "登录失败", "error");
       }
     } catch {
-      showMessage("登录失败，请重试", "error");
+      showMessage("网络错误，请重试", "error");
     } finally {
       setLoading(false);
     }
   }
 
+  /** 注册：调用 Supabase Auth API */
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!username) {
       showMessage("请输入用户名", "error");
       return;
@@ -157,60 +104,35 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
       showMessage("两次输入的密码不一致", "error");
       return;
     }
-    if (passwordStrength < 3) {
-      showMessage("密码强度不足，请包含字母和数字", "error");
-      return;
-    }
-    if (captcha.toUpperCase() !== captchaCode) {
-      showMessage("验证码错误", "error");
-      generateCaptcha();
-      return;
-    }
+
+    const userEmail = registerType === "email" ? email : "";
+    const userPhone = registerType === "phone" ? phone : "";
 
     setLoading(true);
     try {
-      const users = getUsers();
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          password,
+          email: userEmail || null,
+          phone: userPhone || null,
+        }),
+      });
+      const json: ApiResponse & { user?: AuthUser } = await res.json();
 
-      if (users.some(u => u.username === username)) {
-        showMessage("用户名已存在", "error");
-        generateCaptcha();
-        return;
+      if (json.success && json.user) {
+        showMessage("注册成功", "success");
+        setTimeout(() => {
+          onAuthSuccess(json.user!);
+          onClose();
+        }, 800);
+      } else {
+        showMessage(json.message || "注册失败", "error");
       }
-
-      if (email && users.some(u => u.email === email)) {
-        showMessage("该邮箱已被注册", "error");
-        generateCaptcha();
-        return;
-      }
-
-      if (phone && users.some(u => u.phone === phone)) {
-        showMessage("该手机号已被注册", "error");
-        generateCaptcha();
-        return;
-      }
-
-      const newUser: LocalUser = {
-        id: "user_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9),
-        username,
-        email: email || null,
-        phone: phone || null,
-        password,
-        createdAt: Date.now(),
-      };
-
-      users.push(newUser);
-      saveUsers(users);
-
-      const authUser: AuthUser = { id: newUser.id, username: newUser.username, email: newUser.email };
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(authUser));
-
-      showMessage("注册成功", "success");
-      setTimeout(() => {
-        onAuthSuccess(authUser);
-        onClose();
-      }, 1000);
     } catch {
-      showMessage("注册失败，请重试", "error");
+      showMessage("网络错误，请重试", "error");
     } finally {
       setLoading(false);
     }
@@ -220,7 +142,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -255,10 +177,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
             登录
           </button>
           <button
-            onClick={() => {
-              setMode("register");
-              generateCaptcha();
-            }}
+            onClick={() => setMode("register")}
             className={`flex-1 py-2 rounded-lg font-medium transition ${
               mode === "register"
                 ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
@@ -334,7 +253,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
             <div className="flex bg-slate-800/30 rounded-xl p-1">
               <button
                 type="button"
-                onClick={() => { setRegisterType("email"); generateCaptcha(); }}
+                onClick={() => setRegisterType("email")}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                   registerType === "email"
                     ? "bg-slate-700 text-white"
@@ -348,7 +267,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
               </button>
               <button
                 type="button"
-                onClick={() => { setRegisterType("phone"); generateCaptcha(); }}
+                onClick={() => setRegisterType("phone")}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                   registerType === "phone"
                     ? "bg-slate-700 text-white"
@@ -448,29 +367,6 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
                   )}
                 </button>
               </div>
-              <div className="mt-2">
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <div
-                      key={level}
-                      className={`h-1.5 flex-1 rounded-full transition ${
-                        level <= passwordStrength
-                          ? level <= 2
-                            ? "bg-red-500"
-                            : level <= 3
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                          : "bg-slate-700"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {passwordStrength === 0 ? "请输入密码" :
-                   passwordStrength <= 2 ? "密码强度：弱" :
-                   passwordStrength <= 3 ? "密码强度：中" : "密码强度：强"}
-                </p>
-              </div>
             </div>
 
             <div>
@@ -483,28 +379,6 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
                 required
                 className="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
               />
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-400 block mb-2">验证码</label>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={captcha}
-                  onChange={(e) => setCaptcha(e.target.value)}
-                  placeholder="请输入验证码"
-                  maxLength={4}
-                  required
-                  className="flex-1 bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition uppercase"
-                />
-                <button
-                  type="button"
-                  onClick={generateCaptcha}
-                  className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl transition flex items-center justify-center"
-                >
-                  <span className="font-mono text-white">{captchaCode}</span>
-                </button>
-              </div>
             </div>
 
             <button
@@ -542,7 +416,7 @@ export default function GameAuthModal({ isOpen, onClose, onAuthSuccess }: GameAu
             <button
               onClick={() => {
                 const guestUser: AuthUser = { id: "guest", username: "游客", email: null };
-                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(guestUser));
+                localStorage.setItem("space-escape-guest", JSON.stringify(guestUser));
                 onAuthSuccess(guestUser);
                 onClose();
               }}
