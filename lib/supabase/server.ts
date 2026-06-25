@@ -1,5 +1,11 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+
+type SetCookieParam = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
 export function createClient() {
   const cookieStore = cookies();
@@ -12,14 +18,14 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: SetCookieParam[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
           } catch {
-            // 在 Server Component 中调用 set 会被忽略，
-            // 因为可以在中间件中刷新会话。
+            // Server Component 中无法设置 cookie，
+            // 在中间件中刷新会话。
           }
         },
       },
