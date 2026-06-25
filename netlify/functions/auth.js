@@ -68,6 +68,16 @@ exports.handler = async (event) => {
         return errorResponse('用户名或密码错误', 401);
       }
 
+      const db = require('./utils/db').getDB();
+      const { data: authResult, error: authError } = await db.auth.signInWithPassword({
+        email: user.email,
+        password
+      });
+
+      if (authError) {
+        return errorResponse('用户名或密码错误', 401);
+      }
+
       return successResponse({
         user: { id: user.id, username: user.username }
       }, '登录成功');
