@@ -39,6 +39,8 @@ export class GameEngine {
   private skin: SkinStyle;
   private skinImage: HTMLImageElement | null = null;
   private skinImageLoaded = false;
+  /** 像素级碰撞掩码，true 表示该位置有实体像素 */
+  private collisionMask: boolean[][] | null = null;
 
   private state: GameState = "ready";
   private score = 0;
@@ -67,18 +69,51 @@ export class GameEngine {
     if (!url) {
       this.skinImage = null;
       this.skinImageLoaded = false;
+      this.collisionMask = null;
       return;
     }
     const img = new Image();
     img.onload = () => {
       this.skinImage = img;
       this.skinImageLoaded = true;
+      this.generateCollisionMask(img);
     };
     img.onerror = () => {
       this.skinImage = null;
       this.skinImageLoaded = false;
+      this.collisionMask = null;
     };
     img.src = url;
+  }
+
+  /**
+   * 从飞船图片生成像素级碰撞掩码
+   * 在离屏 canvas 上将图片缩放到飞船绘制尺寸，提取 alpha > 128 的像素
+   */
+  private generateCollisionMask(img: HTMLImageElement): void {
+    const drawW = GAME_CONFIG.player.width + 8;  // 48
+    const drawH = GAME_CONFIG.player.height + 8; // 52
+
+    const offscreen = document.createElement("canvas");
+    offscreen.width = drawW;
+    offscreen.height = drawH;
+    const ctx = offscreen.getContext("2d")!;
+
+    // 绘制图片到离屏 canvas（与游戏中相同的缩放比例）
+    ctx.drawImage(img, 0, 0, drawW, drawH);
+
+    const imageData = ctx.getImageData(0, 0, drawW, drawH);
+    const mask: boolean[][] = [];
+
+    for (let y = 0; y < drawH; y++) {
+      mask[y] = [];
+      for (let x = 0; x < drawW; x++) {
+        const idx = (y * drawW + x) * 4 + 3; // alpha 通道
+        mask[y][x] = imageData.data[idx] > 128;
+      }
+    }
+
+    this.collisionMask = mask;
   }
 
   get currentScore(): number {
@@ -97,7 +132,66 @@ export class GameEngine {
     this.skin = skin;
     this.skinImageLoaded = false;
     this.skinImage = null;
+    this.collisionMask = null;
     this.loadSkinImage(skin.imageUrl);
+  }
+
+  /**
+   * 精确碰撞检测：基于像素级掩码
+   * 将陨石映射到飞船本地坐标系，检查陨石圆形区域是否与掩码实体像素重叠
+   */
+  private checkPreciseCollision(asteroid: Asteroid): boolean {
+    const mask = this.collisionMask;
+    if (!mask) return false;
+
+    const { player } = this;
+    // 飞船在 Canvas 上的绘制位置（与 drawPlayer 一致）
+    const drawX = player.x - 4;
+    const drawY = player.y - 4;
+
+    // 陨石中心点
+    const ax = asteroid.x + asteroid.size / 2;
+    const ay = asteroid.y + asteroid.size / 2;
+    // 陨石半径（使用外接圆）
+    const radius = asteroid.size / 2;
+
+    // 将陨石中心转换到飞船本地坐标系（相对于飞船绘制区域左上角）
+    const localCx = ax - drawX;
+    const localCy = ay - drawY;
+
+    const maskH = mask.length;
+    const maskW = mask[0]?.length ?? 0;
+
+    // 快速排除：如果陨石中心远离飞船绘制区域，直接返回 false
+    if (
+      localCx + radius < 0 ||
+      localCx - radius > maskW ||
+      localCy + radius < 0 ||
+      localCy - radius > maskH
+    ) {
+      return false;
+    }
+
+    // 检查陨石圆形范围内的掩码像素
+    const startX = Math.max(0, Math.floor(localCx - radius));
+    const endX = Math.min(maskW, Math.ceil(localCx + radius));
+    const startY = Math.max(0, Math.floor(localCy - radius));
+    const endY = Math.min(maskH, Math.ceil(localCy + radius));
+
+    const radiusSq = radius * radius;
+
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) {
+        const dx = x - localCx;
+        const dy = y - localCy;
+        // 该像素在陨石圆形范围内，且掩码为实体像素 → 碰撞
+        if (dx * dx + dy * dy <= radiusSq && mask[y][x]) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   setKey(key: keyof KeyState, pressed: boolean): void {
@@ -211,7 +305,12 @@ export class GameEngine {
       asteroid.y += asteroid.speed;
       asteroid.rotation += asteroid.rotationSpeed;
 
-      if (checkCollision(this.player, asteroid)) {
+      // 碰撞检测：优先使用像素级精确碰撞，无掩码时回退到 AABB
+      const hasCollision = this.collisionMask
+        ? this.checkPreciseCollision(asteroid)
+        : checkCollision(this.player, asteroid);
+
+      if (hasCollision) {
         this.gameOver();
         return;
       }
