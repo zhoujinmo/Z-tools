@@ -1,20 +1,9 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FaArrowLeft, FaRocket } from "react-icons/fa";
 import GameCanvas from "./GameCanvas";
 import Leaderboard from "./Leaderboard";
 
 export default function SpaceEscapePage() {
-  const [refreshSignal, setRefreshSignal] = useState(0);
-
-  useEffect(() => {
-    const handler = () => setRefreshSignal((n) => n + 1);
-    window.addEventListener("score-submitted", handler);
-    return () => window.removeEventListener("score-submitted", handler);
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 py-4 px-2 sm:py-8 sm:px-4">
       <div className="max-w-[900px] mx-auto">
@@ -40,7 +29,7 @@ export default function SpaceEscapePage() {
 
         {/* 排行榜 */}
         <section className="mt-6">
-          <Leaderboard refreshSignal={refreshSignal} />
+          <Leaderboard refreshSignal={0} />
         </section>
 
         {/* 玩法说明 */}
