@@ -56,22 +56,12 @@ async function createUser(username, email, password) {
     .single();
   
   if (error) {
-    await db.auth.admin.deleteUser(authId);
+    try {
+      await db.auth.admin.deleteUser(authId);
+    } catch (e) {}
     throw error;
   }
   
-  return data;
-}
-
-async function updateUserUsername(id, username) {
-  const db = getDB();
-  const { data, error } = await db
-    .from('users')
-    .update({ username })
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
   return data;
 }
 
@@ -328,7 +318,6 @@ module.exports = {
   getUserByUsername,
   getUserById,
   createUser,
-  updateUserUsername,
   createLedger,
   getLedgersByUserId,
   getLedgerById,
