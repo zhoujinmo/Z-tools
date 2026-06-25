@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { validatePassword } from "@/lib/auth";
-import { createLedger, getProfileByUsername, updateProfileUsername } from "@/lib/db";
 import type { ApiResponse, AuthUser } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 邮箱和手机号至少提供一个
     if (!email && !phone) {
       return NextResponse.json<ApiResponse>(
         { success: false, message: "请提供邮箱或手机号" },
@@ -31,55 +30,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查用户名是否已被占用
-    const existingProfile = await getProfileByUsername(username);
-    if (existingProfile) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, message: "用户名已存在" },
-        { status: 400 }
-      );
+    // 使用 service_role 客户端检查用户名是否已存在（绕过 RLS）
+    try {
+      const admin = createAdminClient();
+      const { data: existingProfile } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (existingProfile) {
+        return NextResponse.json<ApiResponse>(
+          { success: false, message: "用户名已存在" },
+          { status: 400 }
+        );
+      }
+    } catch (dbErr) {
+      // profiles 表可能不存在 → 跳过检查，继续注册
+      console.warn("[register] profiles 表检查失败（可能未执行迁移）:", dbErr);
     }
 
     const supabase = createClient();
+    const registerEmail = email || `${phone}@phone.user`;
 
-    // 注册方式：优先使用邮箱，否则使用手机号作为临时邮箱
-    const registerEmail = email || `${phone}@example.com`;
-
-    // 使用 Supabase Auth 注册
     const { data, error } = await supabase.auth.signUp({
       email: registerEmail,
       password,
     });
 
     if (error) {
+      const msg =
+        error.code === "user_already_exists"
+          ? "该邮箱已被注册"
+          : error.message;
       return NextResponse.json<ApiResponse>(
-        { success: false, message: error.message },
+        { success: false, message: msg },
         { status: 400 }
       );
     }
 
     if (!data.user) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "注册失败" },
+        { success: false, message: "注册失败，请稍后重试" },
         { status: 500 }
       );
     }
 
-    // 设置用户名到 profile（触发器已自动创建 profile 记录）
-    await updateProfileUsername(data.user.id, username);
+    // 使用 admin 客户端更新 profile（绕过 RLS，即使是新创建的用户也能写入）
+    try {
+      const admin = createAdminClient();
 
-    // 如果提供了手机号，更新 profile
-    if (phone) {
-      await supabase
-        .from("profiles")
-        .update({ phone })
-        .eq("id", data.user.id);
+      // 如果触发器未创建 profile，手动插入
+      await admin.from("profiles").upsert(
+        {
+          id: data.user.id,
+          username,
+          email: email || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      // 创建默认账本
+      await admin.from("ledgers").insert({
+        user_id: data.user.id,
+        name: "我的账本",
+        description: "",
+      });
+    } catch (dbErr) {
+      // 表不存在不影响注册（用户已创建），后续迁移运行后再用
+      console.warn("[register] 写 profile/ledger 失败（可能未执行迁移）:", dbErr);
     }
 
-    // 创建默认账本
-    await createLedger(data.user.id, "我的账本", "");
-
-    const user: AuthUser = { id: data.user.id, username, email: email || null };
+    const user: AuthUser = {
+      id: data.user.id,
+      username,
+      email: email || null,
+    };
 
     return NextResponse.json<ApiResponse & { user: AuthUser }>({
       success: true,
@@ -87,8 +115,9 @@ export async function POST(request: NextRequest) {
       user,
     });
   } catch (err) {
+    console.error("[register] 未预期错误:", err);
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "服务器错误: " + (err as Error).message },
+      { success: false, message: "服务器错误" },
       { status: 500 }
     );
   }

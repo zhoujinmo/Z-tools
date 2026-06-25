@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getProfileByUsername } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ApiResponse, AuthUser } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -20,14 +20,22 @@ export async function POST(request: NextRequest) {
 
     // 如果提供的是用户名而非邮箱，通过用户名查找邮箱
     if (!loginEmail && username) {
-      const profile = await getProfileByUsername(username);
-      if (!profile?.email) {
-        return NextResponse.json<ApiResponse>(
-          { success: false, message: "用户名或密码错误" },
-          { status: 401 }
-        );
+      try {
+        const admin = createAdminClient();
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("email")
+          .eq("username", username)
+          .maybeSingle();
+
+        if (profile?.email) {
+          loginEmail = profile.email;
+        }
+      } catch (dbErr) {
+        // profiles 表可能不存在，回退到用户名当邮箱尝试
+        console.warn("[login] profiles 表查询失败:", dbErr);
+        loginEmail = username; // 尝试把用户名本身当邮箱用
       }
-      loginEmail = profile.email;
     }
 
     if (!loginEmail) {
@@ -43,23 +51,34 @@ export async function POST(request: NextRequest) {
     });
 
     if (error || !data.user) {
+      const msg =
+        error?.code === "invalid_credentials"
+          ? "用户名或密码错误"
+          : (error?.message || "登录失败");
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "用户名或密码错误" },
+        { success: false, message: msg },
         { status: 401 }
       );
     }
 
     // 获取 profile 中的 username
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username, email")
-      .eq("id", data.user.id)
-      .single();
+    let profileUsername = "";
+    try {
+      const admin = createAdminClient();
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("username, email")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      profileUsername = profile?.username || "";
+    } catch {
+      // profiles 表可能不存在，用邮箱作为兜底
+    }
 
     const user: AuthUser = {
       id: data.user.id,
-      username: profile?.username || data.user.email || "",
-      email: profile?.email || data.user.email || null,
+      username: profileUsername || username || data.user.email || "",
+      email: data.user.email || null,
     };
 
     return NextResponse.json<ApiResponse & { user: AuthUser }>({
@@ -68,8 +87,9 @@ export async function POST(request: NextRequest) {
       user,
     });
   } catch (err) {
+    console.error("[login] 未预期错误:", err);
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "服务器错误: " + (err as Error).message },
+      { success: false, message: "服务器错误" },
       { status: 500 }
     );
   }

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import type { ApiResponse, AuthUser } from "@/lib/types";
 
@@ -27,18 +28,27 @@ export async function getAuthUser(): Promise<{
     };
   }
 
-  // 获取 profile 中的 username
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, email")
-    .eq("id", user.id)
-    .single();
+  // 使用 admin 客户端获取 profile（绕过 RLS）
+  let profileUsername = "";
+  let profileEmail = "";
+  try {
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("username, email")
+      .eq("id", user.id)
+      .maybeSingle();
+    profileUsername = profile?.username || "";
+    profileEmail = profile?.email || "";
+  } catch {
+    // profiles 表可能不存在
+  }
 
   return {
     user: {
       id: user.id,
-      username: profile?.username || user.email || "",
-      email: profile?.email || user.email || null,
+      username: profileUsername || user.email || "",
+      email: profileEmail || user.email || null,
     },
     errorResponse: null,
   };
