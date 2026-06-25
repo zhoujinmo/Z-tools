@@ -24,14 +24,17 @@ function saveSkinId(skinId: string): void {
 export default function SkinSelectPage() {
   const [selectedSkin, setSelectedSkin] = useState<string>(DEFAULT_SKIN.id);
   const [previewSkin, setPreviewSkin] = useState<SkinStyle | null>(null);
+  // 使用 state 存储皮肤列表，避免服务端/客户端 hydration 不匹配
+  const [unlockedSkins, setUnlockedSkins] = useState<SkinStyle[]>([]);
+  const [lockedSkins, setLockedSkins] = useState<SkinStyle[]>([]);
 
   // 仅在客户端挂载后读取 localStorage，避免 hydration 不匹配
   useEffect(() => {
     setSelectedSkin(getSavedSkinId());
+    setUnlockedSkins(getUnlockedSkins());
+    setLockedSkins(getLockedSkins());
   }, []);
 
-  const unlockedSkins = getUnlockedSkins();
-  const lockedSkins = getLockedSkins();
   const unlockedIds = new Set(unlockedSkins.map(s => s.id));
 
   const handleSelect = (skin: SkinStyle) => {
