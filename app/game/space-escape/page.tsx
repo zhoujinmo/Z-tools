@@ -4,18 +4,19 @@ import GameCanvas from "./GameCanvas";
 
 export default function SpaceEscapePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 py-4 px-2 sm:py-8 sm:px-4">
       <div className="max-w-[900px] mx-auto">
         {/* 顶部导航 */}
-        <header className="flex items-center justify-between mb-6">
+        <header className="flex items-center justify-between mb-4 sm:mb-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition"
+            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition min-h-[44px] min-w-[44px] flex items-center"
           >
-            <FaArrowLeft /> 返回主页
+            <FaArrowLeft className="w-6 h-6 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">返回主页</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FaRocket className="text-blue-400" /> 太空逃亡
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <FaRocket className="text-blue-400 w-5 h-5 sm:w-6 sm:h-6" /> 太空逃亡
           </h1>
           <div className="w-24" />
         </header>

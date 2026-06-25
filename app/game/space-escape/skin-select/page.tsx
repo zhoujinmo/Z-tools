@@ -47,20 +47,21 @@ export default function SkinSelectPage() {
   const currentSkin = getSkinById(selectedSkin);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 py-4 px-2 sm:py-8 sm:px-4">
       <div className="max-w-[800px] mx-auto">
         {/* 顶部导航 */}
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-4 sm:mb-8">
           <button
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition"
+            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition min-h-[44px] min-w-[44px] flex items-center"
           >
-            <FaArrowLeft /> 返回
+            <FaArrowLeft className="w-6 h-6" />
+            <span className="text-sm">返回</span>
           </button>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
             <span className="text-purple-400">🎨</span> 皮肤选择
           </h1>
-          <div className="w-24" />
+          <div className="w-20" />
         </header>
 
         {/* 当前使用提示 */}
@@ -120,16 +121,16 @@ export default function SkinSelectPage() {
         )}
 
         {/* 已解锁皮肤 */}
-        <div className="bg-slate-900/60 rounded-2xl p-6 border border-slate-700 mb-6">
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <div className="bg-slate-900/60 rounded-xl sm:rounded-2xl p-3 sm:p-6 border border-slate-700 mb-4 sm:mb-6">
+          <h2 className="text-sm sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
             <span className="text-green-400">✓</span> 已解锁皮肤 ({unlockedSkins.length})
           </h2>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
             {unlockedSkins.map((skin) => (
               <button
                 key={skin.id}
                 onClick={() => handleSelect(skin)}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                className={`relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all min-h-[80px] sm:min-h-[90px] ${
                   selectedSkin === skin.id
                     ? "border-purple-500 shadow-lg shadow-purple-500/30 scale-105"
                     : "border-slate-600 hover:border-slate-400"
@@ -166,20 +167,20 @@ export default function SkinSelectPage() {
 
         {/* 未解锁皮肤 */}
         {lockedSkins.length > 0 && (
-          <div className="bg-slate-900/60 rounded-2xl p-6 border border-slate-700 mb-6">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-slate-900/60 rounded-xl sm:rounded-2xl p-3 sm:p-6 border border-slate-700 mb-4 sm:mb-6">
+            <h2 className="text-sm sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
               <FaLock className="w-5 h-5 text-slate-500" />
               未解锁皮肤 ({lockedSkins.length})
             </h2>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
               {lockedSkins.map((skin) => (
                 <div
                   key={skin.id}
-                  className="relative aspect-square rounded-xl overflow-hidden border-2 border-slate-700 opacity-60"
+                  className="relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 border-slate-700 opacity-60 min-h-[80px] sm:min-h-[90px]"
                 >
                   {/* 锁定遮罩 */}
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                    <FaLock className="w-8 h-8 text-slate-400" />
+                    <FaLock className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
                   </div>
                   {skin.imageUrl ? (
                     <img
@@ -189,16 +190,16 @@ export default function SkinSelectPage() {
                     />
                   ) : (
                     <div
-                      className="w-full h-full flex items-center justify-center text-white text-3xl"
+                      className="w-full h-full flex items-center justify-center text-white text-2xl sm:text-3xl"
                       style={{ backgroundColor: skin.bodyColor }}
                     >
                       🛸
                     </div>
                   )}
                   {/* 皮肤名称和解锁条件 */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1 sm:p-2">
                     <p className="text-xs text-white text-center truncate">{skin.name}</p>
-                    <p className="text-xs text-slate-400 text-center truncate">
+                    <p className="text-[10px] sm:text-xs text-slate-400 text-center truncate">
                       {skin.unlockCondition}
                     </p>
                   </div>
@@ -209,16 +210,16 @@ export default function SkinSelectPage() {
         )}
 
         {/* 底部按钮 */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleBack}
-            className="flex-1 px-6 py-3 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-600 transition"
+            className="flex-1 min-h-[44px] px-6 py-3 bg-slate-700 text-white rounded-xl font-medium hover:bg-slate-600 transition flex items-center justify-center"
           >
             取消
           </button>
           <button
             onClick={handleConfirm}
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-bold hover:from-purple-600 hover:to-blue-600 transition"
+            className="flex-1 min-h-[44px] px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-bold hover:from-purple-600 hover:to-blue-600 transition flex items-center justify-center"
           >
             确认选择
           </button>

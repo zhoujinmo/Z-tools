@@ -34,7 +34,6 @@ export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
-  const touchTarget = useRef<{ x: number; y: number } | null>(null);
   const [state, setState] = useState<GameState>("ready");
   const [score, setScore] = useState(0);
   const [skinId] = useState<string>(getSavedSkinId());
@@ -43,6 +42,12 @@ export default function GameCanvas() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobile] = useState(isTouchDevice);
+  const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+  });
 
   /** 初始化引擎 */
   useEffect(() => {
@@ -86,12 +91,14 @@ export default function GameCanvas() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (validKeys.includes(e.key)) {
         e.preventDefault();
+        setPressedKeys((prev) => ({ ...prev, [e.key]: true }));
         engineRef.current?.setKey(e.key as never, true);
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (validKeys.includes(e.key)) {
         e.preventDefault();
+        setPressedKeys((prev) => ({ ...prev, [e.key]: false }));
         engineRef.current?.setKey(e.key as never, false);
       }
     };
@@ -104,103 +111,30 @@ export default function GameCanvas() {
     };
   }, []);
 
-  /** 触屏事件：将触摸坐标转为 Canvas 内坐标 */
-  const getCanvasPos = useCallback(
-    (clientX: number, clientY: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = GAME_CONFIG.width / rect.width;
-      const scaleY = GAME_CONFIG.height / rect.height;
-      return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY,
-      };
-    },
-    []
-  );
+  /** 虚拟方向键触摸处理 */
+  const handleDirectionTouchStart = (key: string) => (e: React.TouchEvent) => {
+    e.preventDefault();
+    setPressedKeys((prev) => ({ ...prev, [key]: true }));
+    engineRef.current?.setKey(key as never, true);
+  };
 
-  /** 触屏：根据触摸点移动飞船 */
-  const updateTouchMovement = useCallback(() => {
-    const engine = engineRef.current;
-    const target = touchTarget.current;
-    if (!engine || !target) return;
+  const handleDirectionTouchEnd = (key: string) => (e: React.TouchEvent) => {
+    e.preventDefault();
+    setPressedKeys((prev) => ({ ...prev, [key]: false }));
+    engineRef.current?.setKey(key as never, false);
+  };
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const player = engine.playerPos;
-    if (!player) return;
+  const handleDirectionMouseDown = (key: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setPressedKeys((prev) => ({ ...prev, [key]: true }));
+    engineRef.current?.setKey(key as never, true);
+  };
 
-    const margin = 80; // 死区，避免精确对准
-    // 根据与触摸点的相对位置设置方向键
-    const dx = target.x - player.x;
-    const dy = target.y - player.y;
-
-    engine.setKey("ArrowLeft" as never, dx < -margin);
-    engine.setKey("ArrowRight" as never, dx > margin);
-    engine.setKey("ArrowUp" as never, dy < -margin);
-    engine.setKey("ArrowDown" as never, dy > margin);
-  }, []);
-
-  /** 触屏控制器 */
-  useEffect(() => {
-    if (!isMobile) return;
-    let rafId: number;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleTouchStart = (e: any) => {
-      e.preventDefault();
-      // 阻止默认行为防止页面滚动
-      const touch = e.touches[0];
-      if (!touch) return;
-      touchTarget.current = getCanvasPos(touch.clientX, touch.clientY);
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleTouchMove = (e: any) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      if (!touch) return;
-      touchTarget.current = getCanvasPos(touch.clientX, touch.clientY);
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleTouchEnd = (e: any) => {
-      e.preventDefault();
-      touchTarget.current = null;
-      // 松开时清除所有方向键
-      const eng = engineRef.current;
-      if (eng) {
-        eng.setKey("ArrowUp" as never, false);
-        eng.setKey("ArrowDown" as never, false);
-        eng.setKey("ArrowLeft" as never, false);
-        eng.setKey("ArrowRight" as never, false);
-      }
-    };
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
-    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
-    canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
-
-    // 每帧更新飞船方向
-    function tick() {
-      updateTouchMovement();
-      rafId = requestAnimationFrame(tick);
-    }
-    tick();
-
-    return () => {
-      canvas.removeEventListener("touchstart", handleTouchStart);
-      canvas.removeEventListener("touchmove", handleTouchMove);
-      canvas.removeEventListener("touchend", handleTouchEnd);
-      canvas.removeEventListener("touchcancel", handleTouchEnd);
-      cancelAnimationFrame(rafId);
-    };
-  }, [isMobile, getCanvasPos, updateTouchMovement]);
+  const handleDirectionMouseUp = (key: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setPressedKeys((prev) => ({ ...prev, [key]: false }));
+    engineRef.current?.setKey(key as never, false);
+  };
 
   /** 持久化用户到 localStorage */
   const persistUser = (u: AuthUser) => {
@@ -278,10 +212,10 @@ export default function GameCanvas() {
   const isGameOver = state === "gameover";
 
   return (
-    <div className="flex flex-col items-center gap-3 px-2">
+    <div className="flex flex-col items-center gap-2 sm:gap-3 px-2 w-full">
       {/* 用户信息栏 */}
-      <div className="w-full max-w-[800px] flex items-center justify-between">
-        <div className="text-slate-400 text-sm">
+      <div className="w-full max-w-[800px] flex items-center justify-between px-1">
+        <div className="text-slate-400 text-xs sm:text-sm">
           {user ? <span>欢迎，{user.username}</span> : <span>未登录</span>}
         </div>
         {user && (
@@ -292,7 +226,7 @@ export default function GameCanvas() {
               setUser(null);
               handleBackToReady();
             }}
-            className="text-slate-400 hover:text-white text-sm transition"
+            className="text-slate-400 hover:text-white text-xs sm:text-sm transition min-h-[44px] px-3 flex items-center"
           >
             退出登录
           </button>
@@ -302,11 +236,11 @@ export default function GameCanvas() {
       {/* Canvas 游戏窗口（响应式缩放） */}
       <div
         ref={containerRef}
-        className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-700 select-none"
+        className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-700 select-none"
         style={{
-          width: "min(100vw - 16px, 800px)",
+          width: "min(100vw - 8px, 800px)",
           aspectRatio: `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
-          maxHeight: "calc(100vh - 180px)",
+          maxHeight: "calc(100vh - 150px)",
           touchAction: "none",
         }}
       >
@@ -320,26 +254,26 @@ export default function GameCanvas() {
         {/* 游戏结束遮罩 */}
         {isGameOver && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-4">
-            <h2 className="text-2xl sm:text-4xl font-bold text-red-500 mb-2">游戏结束</h2>
-            <p className="text-lg sm:text-xl mb-1">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold text-red-500 mb-3">游戏结束</h2>
+            <p className="text-base sm:text-lg md:text-xl mb-2">
               最终得分：<span className="text-yellow-400 font-bold">{score}</span>
             </p>
             {unlockMsg && (
-              <p className="text-xs sm:text-sm text-green-400 mb-1">{unlockMsg}</p>
+              <p className="text-xs sm:text-sm text-green-400 mb-2">{unlockMsg}</p>
             )}
-            <p className="text-xs sm:text-sm text-slate-300 mb-4 sm:mb-6">
+            <p className="text-xs sm:text-sm text-slate-300 mb-6">
               {submitMsg ?? ""}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-[280px]">
               <button
                 onClick={handleRestart}
-                className="px-5 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl font-medium text-sm sm:text-base hover:from-blue-600 hover:to-blue-700 transition"
+                className="w-full min-h-[44px] px-5 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl font-medium text-sm sm:text-base hover:from-blue-600 hover:to-blue-700 transition flex items-center justify-center"
               >
                 再玩一次
               </button>
               <button
                 onClick={handleBackToReady}
-                className="px-5 sm:px-6 py-2 sm:py-3 bg-slate-700 rounded-xl font-medium text-sm sm:text-base hover:bg-slate-600 transition"
+                className="w-full min-h-[44px] px-5 sm:px-6 py-3 bg-slate-700 rounded-xl font-medium text-sm sm:text-base hover:bg-slate-600 transition flex items-center justify-center"
               >
                 返回
               </button>
@@ -350,32 +284,32 @@ export default function GameCanvas() {
         {/* 准备界面遮罩 */}
         {isReady && (
           <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white p-4">
-            <h2 className="text-2xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               太空逃亡
             </h2>
-            <p className="text-slate-300 text-sm sm:text-base mb-1">
-              {isMobile ? "手指滑动控制飞船，躲避陨石" : "方向键控制飞船，躲避陨石"}
+            <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-2 text-center">
+              {isMobile ? "使用虚拟方向键控制飞船" : "方向键控制飞船，躲避陨石"}
             </p>
-            <p className="text-slate-400 text-xs sm:text-sm mb-5">
+            <p className="text-slate-400 text-xs sm:text-sm mb-6 text-center">
               躲过的陨石越多，分数越高
             </p>
             <button
               onClick={handleStart}
-              className="px-7 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl font-bold text-base sm:text-lg hover:scale-105 transition mb-3"
+              className="w-full max-w-[200px] min-h-[44px] px-7 sm:px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl font-bold text-sm sm:text-base md:text-lg hover:scale-105 transition mb-4 flex items-center justify-center"
             >
               {user ? "开始游戏" : "登录后开始"}
             </button>
-            <div className="flex gap-2 sm:gap-3 mb-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-[280px]">
               <a
                 href="/game/space-escape/skin-select"
-                className="inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 bg-slate-700/80 hover:bg-slate-600 rounded-xl text-white text-xs sm:text-sm transition"
+                className="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-3 bg-slate-700/80 hover:bg-slate-600 rounded-xl text-white text-xs sm:text-sm transition"
               >
                 <span>🎨</span>
                 <span>皮肤选择</span>
               </a>
               <a
                 href="/game/space-escape/music-select"
-                className="inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 bg-slate-700/80 hover:bg-slate-600 rounded-xl text-white text-xs sm:text-sm transition"
+                className="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-3 bg-slate-700/80 hover:bg-slate-600 rounded-xl text-white text-xs sm:text-sm transition"
               >
                 <span>🎵</span>
                 <span>背景音乐</span>
@@ -386,21 +320,21 @@ export default function GameCanvas() {
       </div>
 
       {/* 控制栏 */}
-      <div className="w-full max-w-[800px] flex flex-wrap items-center justify-between gap-3">
+      <div className="w-full max-w-[800px] flex flex-wrap items-center justify-between gap-3 px-1">
         {/* 实时分数 */}
         <div className="text-white font-mono">
-          <span className="text-slate-400 text-sm">分数：</span>
-          <span className="text-xl sm:text-2xl font-bold text-yellow-400 tabular-nums">
+          <span className="text-slate-400 text-xs sm:text-sm">分数：</span>
+          <span className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 tabular-nums">
             {score}
           </span>
         </div>
 
         {/* 操作按钮 */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 sm:gap-3">
           {isPlaying && (
             <button
               onClick={handleBackToReady}
-              className="px-3 sm:px-4 py-2 bg-slate-700 text-white rounded-lg text-xs sm:text-sm hover:bg-slate-600 transition"
+              className="min-h-[44px] px-4 sm:px-5 py-2 bg-slate-700 text-white rounded-lg text-xs sm:text-sm hover:bg-slate-600 transition flex items-center"
             >
               暂停
             </button>
@@ -408,13 +342,93 @@ export default function GameCanvas() {
           {!user && (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg text-xs sm:text-sm hover:bg-purple-500 transition"
+              className="min-h-[44px] px-4 sm:px-5 py-2 bg-purple-600 text-white rounded-lg text-xs sm:text-sm hover:bg-purple-500 transition flex items-center"
             >
               登录/注册
             </button>
           )}
         </div>
       </div>
+
+      {/* 虚拟方向键（移动端） */}
+      {isMobile && isPlaying && (
+        <div className="w-full max-w-[800px] flex justify-center mt-4">
+          <div className="relative w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]">
+            {/* 上 */}
+            <button
+              onTouchStart={handleDirectionTouchStart("ArrowUp")}
+              onTouchEnd={handleDirectionTouchEnd("ArrowUp")}
+              onTouchCancel={handleDirectionTouchEnd("ArrowUp")}
+              onMouseDown={handleDirectionMouseDown("ArrowUp")}
+              onMouseUp={handleDirectionMouseUp("ArrowUp")}
+              onMouseLeave={handleDirectionMouseUp("ArrowUp")}
+              className={`absolute left-1/2 -translate-x-1/2 top-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
+                pressedKeys.ArrowUp
+                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
+                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
+              }`}
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            {/* 下 */}
+            <button
+              onTouchStart={handleDirectionTouchStart("ArrowDown")}
+              onTouchEnd={handleDirectionTouchEnd("ArrowDown")}
+              onTouchCancel={handleDirectionTouchEnd("ArrowDown")}
+              onMouseDown={handleDirectionMouseDown("ArrowDown")}
+              onMouseUp={handleDirectionMouseUp("ArrowDown")}
+              onMouseLeave={handleDirectionMouseUp("ArrowDown")}
+              className={`absolute left-1/2 -translate-x-1/2 bottom-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
+                pressedKeys.ArrowDown
+                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
+                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
+              }`}
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {/* 左 */}
+            <button
+              onTouchStart={handleDirectionTouchStart("ArrowLeft")}
+              onTouchEnd={handleDirectionTouchEnd("ArrowLeft")}
+              onTouchCancel={handleDirectionTouchEnd("ArrowLeft")}
+              onMouseDown={handleDirectionMouseDown("ArrowLeft")}
+              onMouseUp={handleDirectionMouseUp("ArrowLeft")}
+              onMouseLeave={handleDirectionMouseUp("ArrowLeft")}
+              className={`absolute top-1/2 -translate-y-1/2 left-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
+                pressedKeys.ArrowLeft
+                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
+                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
+              }`}
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            {/* 右 */}
+            <button
+              onTouchStart={handleDirectionTouchStart("ArrowRight")}
+              onTouchEnd={handleDirectionTouchEnd("ArrowRight")}
+              onTouchCancel={handleDirectionTouchEnd("ArrowRight")}
+              onMouseDown={handleDirectionMouseDown("ArrowRight")}
+              onMouseUp={handleDirectionMouseUp("ArrowRight")}
+              onMouseLeave={handleDirectionMouseUp("ArrowRight")}
+              className={`absolute top-1/2 -translate-y-1/2 right-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
+                pressedKeys.ArrowRight
+                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
+                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
+              }`}
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 登录弹窗 */}
       <GameAuthModal
