@@ -340,7 +340,7 @@ export default function GameCanvas() {
         {/* 准备界面遮罩 */}
         {isReady && (
           <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white p-4">
-            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold mb-4 text-white">
               太空逃亡
             </h2>
             <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-2 text-center">

@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  /* 全局字体由 layout.tsx 的 Inter font 提供，避免重复定义 */
   body {
-    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
