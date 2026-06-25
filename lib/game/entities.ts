@@ -30,7 +30,9 @@ export function createPlayer(): Player {
 export function drawPlayer(
   ctx: CanvasRenderingContext2D,
   player: Player,
-  skin: SkinStyle
+  skin: SkinStyle,
+  skinImage?: HTMLImageElement | null,
+  skinImageLoaded?: boolean
 ): void {
   const { x, y, width, height, thrustPhase } = player;
   const cx = x + width / 2;
@@ -48,7 +50,13 @@ export function drawPlayer(
   ctx.closePath();
   ctx.fill();
 
-  // 载具主体（三角形飞船）
+  // 如果有皮肤图片且已加载，绘制图片
+  if (skinImage && skinImageLoaded) {
+    ctx.drawImage(skinImage, x - 4, y - 4, width + 8, height + 8);
+    return;
+  }
+
+  // 载具主体（三角形飞船 - 默认绘制）
   const bodyGrad = ctx.createLinearGradient(x, y, x + width, y + height);
   bodyGrad.addColorStop(0, skin.highlightColor);
   bodyGrad.addColorStop(0.5, skin.bodyColor);

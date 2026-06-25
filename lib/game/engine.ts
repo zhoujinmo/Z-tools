@@ -37,6 +37,8 @@ export class GameEngine {
     ArrowRight: false,
   };
   private skin: SkinStyle;
+  private skinImage: HTMLImageElement | null = null;
+  private skinImageLoaded = false;
 
   private state: GameState = "ready";
   private score = 0;
@@ -58,6 +60,25 @@ export class GameEngine {
     this.player = createPlayer();
     this.stars = createStars();
     this.nebulae = createNebulae();
+    this.loadSkinImage(skin.imageUrl);
+  }
+
+  private loadSkinImage(url: string | undefined): void {
+    if (!url) {
+      this.skinImage = null;
+      this.skinImageLoaded = false;
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      this.skinImage = img;
+      this.skinImageLoaded = true;
+    };
+    img.onerror = () => {
+      this.skinImage = null;
+      this.skinImageLoaded = false;
+    };
+    img.src = url;
   }
 
   get currentScore(): number {
@@ -74,6 +95,9 @@ export class GameEngine {
 
   setSkin(skin: SkinStyle): void {
     this.skin = skin;
+    this.skinImageLoaded = false;
+    this.skinImage = null;
+    this.loadSkinImage(skin.imageUrl);
   }
 
   setKey(key: keyof KeyState, pressed: boolean): void {
@@ -240,7 +264,7 @@ export class GameEngine {
       drawAsteroid(ctx, asteroid);
     }
 
-    drawPlayer(ctx, this.player, this.skin);
+    drawPlayer(ctx, this.player, this.skin, this.skinImage, this.skinImageLoaded);
 
     this.drawHUD();
   }
