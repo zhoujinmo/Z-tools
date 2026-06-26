@@ -19,8 +19,8 @@ export async function GET() {
 
     const user = sessionData.session.user;
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("game_progress")
+    const { data, error } = await (admin
+      .from("game_progress") as any)
       .select("*")
       .eq("user_id", user.id)
       .single();
@@ -77,22 +77,24 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
 
     // upsert
-    const { error } = await admin.from("game_progress").upsert(
-      {
-        user_id: user.id,
-        total_score: total_score ?? 0,
-        total_games: total_games ?? 0,
-        max_level: max_level ?? 0,
-        max_consecutive_dodges: max_consecutive_dodges ?? 0,
-        stellar_coins: stellar_coins ?? 0,
-        unlocked_skin_ids: unlocked_skin_ids ?? ["default"],
-        skin_fragments: skin_fragments ?? {},
-        achievements: achievements ?? [],
-        last_daily_bonus_date: last_daily_bonus_date ?? "",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    );
+    const { error } = await (admin
+      .from("game_progress") as any)
+      .upsert(
+        {
+          user_id: user.id,
+          total_score: total_score ?? 0,
+          total_games: total_games ?? 0,
+          max_level: max_level ?? 0,
+          max_consecutive_dodges: max_consecutive_dodges ?? 0,
+          stellar_coins: stellar_coins ?? 0,
+          unlocked_skin_ids: unlocked_skin_ids ?? ["default"],
+          skin_fragments: skin_fragments ?? {},
+          achievements: achievements ?? [],
+          last_daily_bonus_date: last_daily_bonus_date ?? "",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
 
     if (error) {
       console.error("[progress POST]", error.message);

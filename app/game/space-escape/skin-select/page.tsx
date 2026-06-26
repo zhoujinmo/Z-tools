@@ -164,7 +164,7 @@ export default function SkinSelectPage() {
         {/* 当前使用提示 */}
         <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl p-4 mb-6 border border-purple-500/30">
           <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-purple-500/50">
+            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-purple-500/50 bg-[#0f172a]">
               {currentSkin.imageUrl ? (
                 <img
                   src={currentSkin.imageUrl}
@@ -198,7 +198,7 @@ export default function SkinSelectPage() {
           <div className="bg-slate-900/60 rounded-2xl p-6 mb-6 border border-slate-700">
             <h2 className="text-lg font-bold text-white mb-4">皮肤预览</h2>
             <div className="flex flex-col items-center">
-              <div className="w-32 h-32 rounded-xl overflow-hidden border-2 border-purple-500/50 mb-4">
+              <div className="w-32 h-32 rounded-xl overflow-hidden border-2 border-purple-500/50 mb-4 bg-[#0f172a]">
                 {previewSkin.imageUrl ? (
                   <img
                     src={previewSkin.imageUrl}
@@ -233,7 +233,7 @@ export default function SkinSelectPage() {
               <button
                 key={skin.id}
                 onClick={() => handleSelect(skin)}
-                className={`relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all min-h-[80px] sm:min-h-[90px] ${
+                className={`relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all min-h-[80px] sm:min-h-[90px] bg-[#0f172a] ${
                   selectedSkin === skin.id
                     ? "border-purple-500 shadow-lg shadow-purple-500/30 scale-105"
                     : "border-slate-600 hover:border-slate-400"
@@ -282,7 +282,7 @@ export default function SkinSelectPage() {
                 return (
                   <div
                     key={skin.id}
-                    className="relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 border-slate-700 opacity-70 min-h-[80px] sm:min-h-[90px]"
+                    className="relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 border-slate-700 opacity-70 min-h-[80px] sm:min-h-[90px] bg-[#0f172a]"
                   >
                     <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 gap-1">
                       <FaLock className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />

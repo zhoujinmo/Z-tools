@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
 
     // 读取当前进度
-    const { data: progress, error: readError } = await admin
-      .from("game_progress")
+    const { data: progress, error: readError } = await (admin
+      .from("game_progress") as any)
       .select("*")
       .eq("user_id", user.id)
       .single();
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
     const fragments = progress?.skin_fragments ?? {};
     fragments[fragmentId] = (fragments[fragmentId] ?? 0) + amount;
 
-    const { error: updateError } = await admin
-      .from("game_progress")
+    const { error: updateError } = await (admin
+      .from("game_progress") as any)
       .upsert(
         {
           user_id: user.id,
