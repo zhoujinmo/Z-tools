@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { FaArrowLeft, FaRocket } from "react-icons/fa";
+import { FaArrowLeft, FaRocket, FaTrophy, FaMedal } from "react-icons/fa";
 import GameCanvas from "./GameCanvas";
-import Leaderboard from "./Leaderboard";
 
 export default function SpaceEscapePage() {
   return (
@@ -11,7 +10,7 @@ export default function SpaceEscapePage() {
         <header className="flex items-center justify-between mb-4 sm:mb-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition min-h-[44px] min-w-[44px] flex items-center"
+            className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition min-h-[44px] min-w-[44px]"
           >
             <FaArrowLeft className="w-6 h-6 sm:w-5 sm:h-5" />
             <span className="text-sm sm:text-base">返回主页</span>
@@ -27,9 +26,22 @@ export default function SpaceEscapePage() {
           <GameCanvas />
         </main>
 
-        {/* 排行榜 */}
-        <section className="mt-6">
-          <Leaderboard refreshSignal={0} />
+        {/* 快捷入口 */}
+        <section className="mt-6 grid grid-cols-2 gap-3">
+          <Link
+            href="/game/space-escape/leaderboard"
+            className="flex items-center justify-center gap-2 py-4 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/25 rounded-xl text-yellow-300 hover:text-yellow-200 transition min-h-[56px]"
+          >
+            <FaTrophy className="w-5 h-5" />
+            <span className="font-medium">排行榜</span>
+          </Link>
+          <Link
+            href="/game/space-escape/achievements"
+            className="flex items-center justify-center gap-2 py-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl text-amber-300 hover:text-amber-200 transition min-h-[56px]"
+          >
+            <FaMedal className="w-5 h-5" />
+            <span className="font-medium">成就</span>
+          </Link>
         </section>
 
         {/* 玩法说明 */}
@@ -56,8 +68,8 @@ export default function SpaceEscapePage() {
                 每 100 分提升一级，陨石更快更密集
               </p>
               <p>
-                <span className="text-purple-400 font-semibold">皮肤：</span>
-                可在下方选择不同涂装的飞船
+                <span className="text-purple-400 font-semibold">星际币：</span>
+                游戏中收集金币，兑换碎片解锁传说皮肤
               </p>
             </div>
           </div>
