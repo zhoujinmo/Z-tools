@@ -34,8 +34,9 @@ export async function getAuthUser(): Promise<{
       .select("username, email")
       .eq("id", data.user.id)
       .maybeSingle();
-    profileUsername = profile?.username || "";
-    profileEmail = profile?.email || "";
+    const profileData = profile as unknown as { username?: string; email?: string } | null;
+    profileUsername = profileData?.username || "";
+    profileEmail = profileData?.email || "";
   } catch {
     // profiles 表可能不存在
   }

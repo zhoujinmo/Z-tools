@@ -33,9 +33,10 @@ export default function AccountingPage() {
               .select("username, email")
               .eq("id", session.user.id)
               .maybeSingle();
-            if (profile) {
-              username = profile.username || "";
-              email = profile.email || email;
+            const profileData = profile as { username?: string; email?: string } | null;
+            if (profileData) {
+              username = profileData.username || "";
+              email = profileData.email || email;
             }
           } catch {
             // profiles 表可能不存在

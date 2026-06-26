@@ -20,15 +20,18 @@ npm-debug.log*
 # Dependencies
 node_modules/
 
-# Netlify
-.netlify/
-
 # Next.js
 .next/
 out/
 build/
 next-env.d.ts
 
-# Database (legacy)
-database/
-*.sqlite
+# 构建输出
+dist/
+
+# 测试覆盖率
+coverage/
+
+# 本地开发临时文件
+*.tmp
+*.temp

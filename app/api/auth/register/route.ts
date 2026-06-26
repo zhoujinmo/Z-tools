@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
         .select("id")
         .eq("username", username)
         .maybeSingle();
-      if (existing) {
+      const existingData = existing as unknown as { id?: string } | null;
+      if (existingData) {
         return NextResponse.json<ApiResponse>(
           { success: false, message: "用户名已存在" },
           { status: 400 }
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
           email: registerEmail,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        },
+        } as never,
         { onConflict: "id" }
       );
 
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         name: "我的账本",
         description: "",
-      });
+      } as never);
 
       if (ldgError) {
         console.error("[register] ledgers insert 失败:", ldgError.message, ldgError.details);

@@ -1,12 +1,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import type { Database } from "@/lib/database.types";
 
-/**
- * 创建基于 cookie 的 Supabase SSR 客户端（用于 Next.js App Router）
- * 适用于 auth 操作用（signUp, signInWithPassword 等）
- */
-export function createClient(cookieStore?: ReturnType<typeof cookies>): SupabaseClient {
+export function createClient(cookieStore?: ReturnType<typeof cookies>): SupabaseClient<Database> {
   const store = cookieStore ?? cookies();
 
   return createServerClient(
@@ -20,7 +17,7 @@ export function createClient(cookieStore?: ReturnType<typeof cookies>): Supabase
             value: cookie.value,
           }));
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               const opts: CookieOptions = {
@@ -35,5 +32,5 @@ export function createClient(cookieStore?: ReturnType<typeof cookies>): Supabase
         },
       },
     }
-  );
+  ) as unknown as SupabaseClient<Database>;
 }

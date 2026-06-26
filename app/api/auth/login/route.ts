@@ -25,8 +25,9 @@ export async function POST(request: NextRequest) {
           .eq("username", username)
           .maybeSingle();
 
-        if ((profile as { email?: string })?.email) {
-          loginEmail = (profile as { email: string }).email;
+        const profileData = profile as unknown as { email?: string } | null;
+        if (profileData?.email) {
+          loginEmail = profileData.email;
         }
       } catch {
         console.warn("[login] profiles 查询失败");
@@ -65,7 +66,8 @@ export async function POST(request: NextRequest) {
         .select("username, email")
         .eq("id", data.user.id)
         .maybeSingle();
-      profileUsername = profile?.username || "";
+      const profileData = profile as unknown as { username?: string; email?: string } | null;
+      profileUsername = profileData?.username || "";
     } catch { /* profiles 表可能不存在 */ }
 
     const user: AuthUser = {
