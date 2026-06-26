@@ -21,7 +21,9 @@ export async function GET() {
       );
     }
 
-    const scores: ScoreEntry[] = (data || []).map((row) => ({
+    const scores: ScoreEntry[] = (
+      (data as unknown as ScoreEntry[]) || []
+    ).map((row) => ({
       id: row.id,
       username: row.username,
       score: row.score,
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       username,
       score: Math.floor(score),
-    });
+    } as never);
 
     if (error) {
       console.error("[scores POST]", error.message);

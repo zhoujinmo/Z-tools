@@ -35,7 +35,7 @@ export async function updateProfileUsername(userId: string, username: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .update({ username, updated_at: new Date().toISOString() })
+    .update({ username, updated_at: new Date().toISOString() } as never)
     .eq("id", userId)
     .select()
     .single();
@@ -90,7 +90,7 @@ export async function createLedger(
   const supabase = createClient();
   const { data, error } = await supabase
     .from("ledgers")
-    .insert({ user_id: userId, name, description })
+    .insert({ user_id: userId, name, description } as never)
     .select()
     .single();
   if (error) throw error;
@@ -105,7 +105,7 @@ export async function updateLedger(
   const supabase = createClient();
   const { error } = await supabase
     .from("ledgers")
-    .update({ name, description, updated_at: new Date().toISOString() })
+    .update({ name, description, updated_at: new Date().toISOString() } as never)
     .eq("id", id);
   if (error) throw error;
 }
@@ -176,7 +176,7 @@ export async function createTransaction(
       date,
       time: parseInt(String(time)),
       sync_status: "synced",
-    })
+    } as never)
     .select()
     .single();
   if (error) throw error;
@@ -203,7 +203,7 @@ export async function updateTransaction(
       date,
       time: parseInt(String(time)),
       updated_at: new Date().toISOString(),
-    })
+    } as never)
     .eq("id", id);
   if (error) throw error;
 }
@@ -236,13 +236,13 @@ export async function upsertSyncRecord(
   if (existing) {
     const { error } = await supabase
       .from("sync_records")
-      .update({ last_sync_time: lastSyncTime })
+      .update({ last_sync_time: lastSyncTime } as never)
       .eq("user_id", userId);
     if (error) throw error;
   } else {
     const { error } = await supabase
       .from("sync_records")
-      .insert({ user_id: userId, last_sync_time: lastSyncTime });
+      .insert({ user_id: userId, last_sync_time: lastSyncTime } as never);
     if (error) throw error;
   }
 }

@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
       .eq("id", user!.id)
       .maybeSingle();
 
+    const profileData = profile as unknown as { settings?: Record<string, unknown> } | null;
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: profile?.settings || {},
+      data: profileData?.settings || {},
     });
   } catch {
     return NextResponse.json<ApiResponse>({
@@ -44,7 +45,7 @@ export async function PUT(request: NextRequest) {
           id: user!.id,
           settings,
           updated_at: new Date().toISOString(),
-        },
+        } as never,
         { onConflict: "id" }
       );
 

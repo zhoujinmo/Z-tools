@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaArrowLeft, FaPlay, FaStop, FaCheck, FaMusic } from "react-icons/fa";
 import { playBgm, stopBgm } from "@/lib/game/audio";
 
@@ -9,10 +9,12 @@ const TRACK_DESC = "银河漫游主题 - 空灵太空氛围音乐";
 
 export default function MusicSelectPage() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isEnabled, setIsEnabled] = useState(() => {
+  const [isEnabled, setIsEnabled] = useState(true);
+
+  useEffect(() => {
     const saved = localStorage.getItem("space-escape-bgm-enabled");
-    return saved !== "false";
-  });
+    setIsEnabled(saved !== "false");
+  }, []);
 
   const handlePreview = () => {
     if (isPlaying) {
