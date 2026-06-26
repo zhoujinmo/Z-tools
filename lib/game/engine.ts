@@ -100,7 +100,8 @@ export class GameEngine {
 
   /**
    * 从飞船图片生成像素级碰撞掩码
-   * 在离屏 canvas 上将图片缩放到飞船绘制尺寸，提取 alpha > 128 的像素
+   * 1. 保持宽高比缩放到飞船绘制区域
+   * 2. 提取 alpha > 200 的像素（排除半透明边缘，碰撞更精确）
    */
   private generateCollisionMask(img: HTMLImageElement): void {
     const drawW = GAME_CONFIG.player.width + 8;  // 48
@@ -111,8 +112,22 @@ export class GameEngine {
     offscreen.height = drawH;
     const ctx = offscreen.getContext("2d")!;
 
-    // 绘制图片到离屏 canvas（与游戏中相同的缩放比例）
-    ctx.drawImage(img, 0, 0, drawW, drawH);
+    // 保持宽高比缩放到绘制区域（与 drawPlayer 一致）
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const boxRatio = drawW / drawH;
+    let sx: number, sy: number, sw: number, sh: number;
+    if (imgRatio > boxRatio) {
+      sh = img.naturalHeight;
+      sw = sh * boxRatio;
+      sx = (img.naturalWidth - sw) / 2;
+      sy = 0;
+    } else {
+      sw = img.naturalWidth;
+      sh = sw / boxRatio;
+      sx = 0;
+      sy = (img.naturalHeight - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, drawW, drawH);
 
     const imageData = ctx.getImageData(0, 0, drawW, drawH);
     const mask: boolean[][] = [];
@@ -120,8 +135,8 @@ export class GameEngine {
     for (let y = 0; y < drawH; y++) {
       mask[y] = [];
       for (let x = 0; x < drawW; x++) {
-        const idx = (y * drawW + x) * 4 + 3; // alpha 通道
-        mask[y][x] = imageData.data[idx] > 128;
+        // alpha > 200：排除半透明边缘像素，碰撞更贴合实体轮廓
+        mask[y][x] = imageData.data[(y * drawW + x) * 4 + 3] > 200;
       }
     }
 

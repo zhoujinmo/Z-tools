@@ -52,9 +52,25 @@ export function drawPlayer(
   ctx.closePath();
   ctx.fill();
 
-  // 如果有皮肤图片且已加载，绘制图片
+  // 如果有皮肤图片且已加载，保持宽高比绘制图片（与碰撞掩码生成一致）
   if (skinImage && skinImageLoaded) {
-    ctx.drawImage(skinImage, x - 4, y - 4, width + 8, height + 8);
+    const drawW = width + 8;
+    const drawH = height + 8;
+    const imgRatio = skinImage.naturalWidth / skinImage.naturalHeight;
+    const boxRatio = drawW / drawH;
+    let sx: number, sy: number, sw: number, sh: number;
+    if (imgRatio > boxRatio) {
+      sh = skinImage.naturalHeight;
+      sw = sh * boxRatio;
+      sx = (skinImage.naturalWidth - sw) / 2;
+      sy = 0;
+    } else {
+      sw = skinImage.naturalWidth;
+      sh = sw / boxRatio;
+      sx = 0;
+      sy = (skinImage.naturalHeight - sh) / 2;
+    }
+    ctx.drawImage(skinImage, sx, sy, sw, sh, x - 4, y - 4, drawW, drawH);
     return;
   }
 
@@ -108,21 +124,26 @@ export function drawPlayer(
  * - 玻璃陨石 - 深绿褐，半透明玻璃态
  */
 const ASTEROID_PALETTES: [string, string, string][] = [
-  // 新鲜熔壳 - 石陨石
-  ["#6b6b6b", "#4a4a4a", "#2d2d2d"],
-  ["#5c5c5c", "#3d3d3d", "#262626"],
-  // 风化铁陨石 - 锈色系
-  ["#a07828", "#7a5520", "#4a3512"],
-  ["#b06a44", "#8b4a2e", "#5c301c"],
-  // 球粒陨石 - 浅灰带褐
-  ["#b8b0a0", "#908878", "#6b6355"],
-  ["#c0b8a8", "#9e9682", "#706858"],
-  // 碳质陨石 - 深炭灰
-  ["#555555", "#3a3a3a", "#282828"],
-  // 橄榄陨石 - 暗绿棕
-  ["#6b755a", "#4a5538", "#323d25"],
-  // 玻璃陨石 - 深绿褐
-  ["#5c6b4a", "#3d4a30", "#283220"],
+  // 锈红铁陨石
+  ["#d44a2a", "#a83520", "#7a2515"],
+  // 火焰橙
+  ["#e8872a", "#c06a18", "#8a4a10"],
+  // 琥珀金
+  ["#e8c44a", "#c09a20", "#8a6a10"],
+  // 翡翠绿
+  ["#4abd6a", "#2e9a4a", "#1e7a35"],
+  // 宝石红
+  ["#c43a5a", "#9a2040", "#701530"],
+  // 紫水晶
+  ["#9a5ad4", "#7a3aaa", "#5a2880"],
+  // 熔岩橙
+  ["#e86a3a", "#c04a20", "#8a3015"],
+  // 青铜棕
+  ["#b8864a", "#8a6430", "#604820"],
+  // 翠绿矿
+  ["#3ab87a", "#209a5a", "#157a40"],
+  // 赤陶红
+  ["#c86a3a", "#a04a25", "#78351a"],
 ];
 
 let asteroidIdCounter = 0;
