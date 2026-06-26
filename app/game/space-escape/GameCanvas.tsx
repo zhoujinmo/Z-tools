@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GameEngine } from "@/lib/game/engine";
 import { GAME_CONFIG } from "@/lib/game/types";
 import type { GameState, GameStats } from "@/lib/game/types";
-import { getSkinById, getSavedSkinId, getSkinProgress, saveSkinProgress, checkAndUnlockSkins } from "./skins";
-import type { SkinProgress } from "./skins";
+import { getSkinById, getSavedSkinId, getGameProgress, saveGameProgress, settleGame } from "./skins";
 import type { AuthUser } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import GameAuthModal from "./GameAuthModal";
@@ -45,6 +44,7 @@ export default function GameCanvas() {
   const [skinId, setSkinId] = useState<string>("default");
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+  const [rewardsMsg, setRewardsMsg] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobile] = useState(isTouchDevice);
@@ -199,39 +199,69 @@ export default function GameCanvas() {
     engineRef.current?.reset();
     setSubmitMsg(null);
     setUnlockMsg(null);
+    setRewardsMsg(null);
   };
 
-  /** 游戏结束：更新进度、解锁皮肤、提交分数 */
+  /** 游戏结束：结算奖励、解锁皮肤/成就、提交分数、同步进度 */
   const handleGameOver = useCallback(
     async (finalScore: number, stats: GameStats) => {
       setSubmitMsg(null);
       setUnlockMsg(null);
+      setRewardsMsg(null);
 
-      const progress: SkinProgress = getSkinProgress();
-      progress.totalScore += finalScore;
-      progress.totalGames += 1;
-      if (stats.level > progress.maxLevel) {
-        progress.maxLevel = stats.level;
-      }
-      if (stats.consecutiveDodges > progress.maxConsecutiveDodges) {
-        progress.maxConsecutiveDodges = stats.consecutiveDodges;
-      }
-      saveSkinProgress(progress);
+      // 结算
+      const progress = getGameProgress();
+      const { progress: newProgress, rewards } = settleGame(progress, stats);
+      saveGameProgress(newProgress);
 
-      const newlyUnlocked = checkAndUnlockSkins(progress);
-      if (newlyUnlocked.length > 0) {
-        const names = newlyUnlocked
+      // 构建奖励消息
+      const parts: string[] = [];
+      parts.push(`+${rewards.coinsEarned} 星际币`);
+      if (rewards.dailyBonus) parts.push("每日首局+30");
+      if (rewards.fragmentsEarned.length > 0)
+        parts.push(`+${rewards.fragmentsEarned.length} 泰坦碎片`);
+      if (rewards.newlyAchieved.length > 0)
+        parts.push(`成就解锁: ${rewards.newlyAchieved.length}个`);
+      if (parts.length > 0) setRewardsMsg(parts.join(" | "));
+
+      // 新解锁皮肤提示
+      if (rewards.newlyUnlockedSkins.length > 0) {
+        const names = rewards.newlyUnlockedSkins
           .map((id) => getSkinById(id).name)
           .join("、");
-        setUnlockMsg(`🎉 解锁新皮肤：${names}`);
+        setUnlockMsg(`新皮肤解锁：${names}`);
+      }
+
+      // 同步到 Supabase（登录用户）
+      if (user && user.id !== "guest") {
+        try {
+          const res = await fetch("/api/game/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              total_score: newProgress.totalScore,
+              total_games: newProgress.totalGames,
+              max_level: newProgress.maxLevel,
+              max_consecutive_dodges: newProgress.maxConsecutiveDodges,
+              stellar_coins: newProgress.stellarCoins,
+              unlocked_skin_ids: newProgress.unlockedSkinIds,
+              skin_fragments: newProgress.skinFragments,
+              achievements: newProgress.achievements,
+              last_daily_bonus_date: newProgress.lastDailyBonusDate,
+            }),
+          });
+          if (!res.ok) console.warn("进度同步失败");
+        } catch {
+          console.warn("进度同步网络错误");
+        }
       }
 
       if (!user || user.id === "guest") {
-        setSubmitMsg("登录账号可保存分数到排行榜");
+        setSubmitMsg("登录账号可保存分数到排行榜并同步进度");
         return;
       }
 
-      // 提交分数到 Supabase
+      // 提交分数到排行榜
       try {
         const res = await fetch("/api/game/scores", {
           method: "POST",
@@ -316,6 +346,9 @@ export default function GameCanvas() {
             </p>
             {unlockMsg && (
               <p className="text-xs sm:text-sm text-green-400 mb-2">{unlockMsg}</p>
+            )}
+            {rewardsMsg && (
+              <p className="text-xs sm:text-sm text-yellow-300 mb-2">{rewardsMsg}</p>
             )}
             <p className="text-xs sm:text-sm text-slate-300 mb-6">
               {submitMsg ?? ""}

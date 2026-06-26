@@ -1,5 +1,7 @@
 import type {
   Asteroid,
+  Coin,
+  FloatText,
   GameState,
   GameStats,
   KeyState,
@@ -11,12 +13,16 @@ import type {
 import { GAME_CONFIG } from "@/lib/game/types";
 import {
   checkCollision,
+  checkCoinCollision,
   createAsteroid,
+  createCoin,
   createNebulae,
   createPlayer,
   createStars,
   drawAsteroid,
   drawBackground,
+  drawCoin,
+  drawFloatText,
   drawPlayer,
 } from "@/lib/game/entities";
 import {
@@ -55,6 +61,12 @@ export class GameEngine {
 
   private consecutiveDodges = 0;
   private maxConsecutiveDodges = 0;
+  private asteroidsDodged = 0;
+
+  private coins: Coin[] = [];
+  private collectedCoins = 0;
+  private floatTexts: FloatText[] = [];
+  private lastCoinSpawn = 0;
 
   constructor(ctx: CanvasRenderingContext2D, skin: SkinStyle) {
     this.ctx = ctx;
@@ -206,7 +218,12 @@ export class GameEngine {
     this.player = createPlayer();
     this.consecutiveDodges = 0;
     this.maxConsecutiveDodges = 0;
+    this.asteroidsDodged = 0;
+    this.coins = [];
+    this.collectedCoins = 0;
+    this.floatTexts = [];
     this.lastSpawn = 0;
+    this.lastCoinSpawn = 0;
     this.lastFrame = performance.now();
 
     playBgm();
@@ -228,7 +245,11 @@ export class GameEngine {
     this.state = "ready";
     this.score = 0;
     this.level = 1;
+    this.asteroidsDodged = 0;
     this.asteroids = [];
+    this.coins = [];
+    this.collectedCoins = 0;
+    this.floatTexts = [];
     this.player = createPlayer();
     this.render();
     this.notifyStateChange();
@@ -256,6 +277,9 @@ export class GameEngine {
     this.updatePlayer();
     this.spawnAsteroids(now);
     this.updateAsteroids();
+    this.spawnCoins(now);
+    this.updateCoins();
+    this.updateFloatTexts();
     this.checkLevelUp();
   }
 
@@ -319,6 +343,7 @@ export class GameEngine {
         if (!asteroid.scored) {
           this.score += GAME_CONFIG.scoring.perAsteroid;
           this.consecutiveDodges++;
+          this.asteroidsDodged++;
           if (this.consecutiveDodges > this.maxConsecutiveDodges) {
             this.maxConsecutiveDodges = this.consecutiveDodges;
           }
@@ -338,6 +363,56 @@ export class GameEngine {
     }
   }
 
+  /** 星际币生成：每 3~5 秒在顶部随机位置生成一枚 */
+  private spawnCoins(now: number): void {
+    const interval = 3000 + Math.random() * 2000; // 3~5 秒
+    if (now - this.lastCoinSpawn > interval) {
+      this.coins.push(createCoin());
+      this.lastCoinSpawn = now;
+    }
+  }
+
+  /** 更新星际币：下落 + 碰撞检测 + 收集 */
+  private updateCoins(): void {
+    const surviving: Coin[] = [];
+    for (const coin of this.coins) {
+      if (coin.collected) continue;
+      coin.y += coin.speed;
+      coin.twinklePhase += 0.06;
+
+      // 碰撞检测
+      if (checkCoinCollision(this.player, coin)) {
+        coin.collected = true;
+        this.collectedCoins++;
+        this.floatTexts.push({
+          x: coin.x + coin.size / 2,
+          y: coin.y,
+          text: "+1",
+          life: 36,
+          maxLife: 36,
+        });
+        this.notifyStateChange();
+        continue;
+      }
+
+      // 出屏消失
+      if (coin.y > GAME_CONFIG.height) continue;
+      surviving.push(coin);
+    }
+    this.coins = surviving;
+  }
+
+  /** 更新浮动文字：上升 + 淡出 */
+  private updateFloatTexts(): void {
+    const surviving: FloatText[] = [];
+    for (const ft of this.floatTexts) {
+      ft.y -= 1;
+      ft.life -= 1;
+      if (ft.life > 0) surviving.push(ft);
+    }
+    this.floatTexts = surviving;
+  }
+
   private gameOver(): void {
     this.state = "gameover";
     this.stop();
@@ -348,6 +423,8 @@ export class GameEngine {
       score: this.score,
       level: this.level,
       consecutiveDodges: this.maxConsecutiveDodges,
+      asteroidsDodged: this.asteroidsDodged,
+      coinsCollected: this.collectedCoins,
     });
   }
 
@@ -363,6 +440,14 @@ export class GameEngine {
       drawAsteroid(ctx, asteroid);
     }
 
+    for (const coin of this.coins) {
+      if (!coin.collected) drawCoin(ctx, coin);
+    }
+
+    for (const ft of this.floatTexts) {
+      drawFloatText(ctx, ft);
+    }
+
     drawPlayer(ctx, this.player, this.skin, this.skinImage, this.skinImageLoaded);
 
     this.drawHUD();
@@ -376,6 +461,7 @@ export class GameEngine {
     ctx.textAlign = "left";
     ctx.fillText(`分数: ${this.score}`, 16, 30);
     ctx.fillText(`等级: ${this.level}`, 16, 56);
+    ctx.fillText(`星际币: ${this.collectedCoins}`, 16, 82);
     ctx.restore();
   }
 

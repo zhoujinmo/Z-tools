@@ -14,13 +14,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!email && !phone) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, message: "请提供邮箱或手机号" },
-        { status: 400 }
-      );
-    }
-
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {
       return NextResponse.json<ApiResponse>(
@@ -29,7 +22,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const registerEmail = email || `${phone}@phone.user`;
+    // 邮箱和手机号均为选填；若都未提供，为 Supabase Auth 生成占位邮箱
+    const registerEmail = email || phone
+      ? (email || `${phone}@phone.user`)
+      : `${username}@space-escape.user`;
     const supabaseUrl = process.env.SUPABASE_URL!;
     const secretKey = process.env.SUPABASE_SECRET_KEY!;
 
