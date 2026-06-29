@@ -2,23 +2,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ApiResponse, ScoreEntry } from "@/lib/types";
-import { promises as fs } from "fs";
+import { accessSync, promises as fs, constants as fsConstants } from "fs";
 import path from "path";
+import os from "os";
 
-const DB_PATH = path.join(process.cwd(), "database", "scores.json");
+// 优先写入 /tmp（Zeabur 等只读文件系统兼容），其次项目目录
+const DB_PATH = (() => {
+  try {
+    accessSync(path.join(process.cwd(), "database"), fsConstants.W_OK);
+    return path.join(process.cwd(), "database", "scores.json");
+  } catch {
+    return path.join(os.tmpdir(), "z-tools-scores.json");
+  }
+})();
+
+// 全局内存缓存，进程内持久化
+let memoryScores: ScoreEntry[] | null = null;
 
 async function readLocalScores(): Promise<ScoreEntry[]> {
+  if (memoryScores) return memoryScores;
   try {
     const raw = await fs.readFile(DB_PATH, "utf-8");
-    return JSON.parse(raw) as ScoreEntry[];
+    memoryScores = JSON.parse(raw) as ScoreEntry[];
+    return memoryScores;
   } catch {
-    return [];
+    memoryScores = [];
+    return memoryScores;
   }
 }
 
 async function writeLocalScores(scores: ScoreEntry[]): Promise<void> {
-  await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
-  await fs.writeFile(DB_PATH, JSON.stringify(scores, null, 2), "utf-8");
+  memoryScores = scores;
+  try {
+    await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
+    await fs.writeFile(DB_PATH, JSON.stringify(scores, null, 2), "utf-8");
+  } catch {
+    // filesystem read-only (Zeabur 等环境) — 仅保留内存
+  }
 }
 
 function useLocalStorage(): boolean {
