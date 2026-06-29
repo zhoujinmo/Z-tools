@@ -35,3 +35,6 @@ coverage/
 # 本地开发临时文件
 *.tmp
 *.temp
+
+# 本地运行时数据
+database/scores.json

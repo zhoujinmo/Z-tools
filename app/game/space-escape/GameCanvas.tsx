@@ -289,9 +289,8 @@ export default function GameCanvas() {
   const isGameOver = state === "gameover";
 
   return (
-    <div className={`flex flex-col items-center w-full ${isPlaying ? "gap-0 px-0" : "gap-2 sm:gap-3 px-2"}`}>
-      {/* 用户信息栏 — 游戏中隐藏 */}
-      {!isPlaying && (
+    <div className="flex flex-col items-center gap-2 sm:gap-3 w-full">
+      {/* 用户信息栏 */}
       <div className="w-full max-w-[800px] flex items-center justify-between px-1">
         <div className="text-slate-400 text-xs sm:text-sm">
           {user ? <span>欢迎，{user.username}</span> : <span>未登录</span>}
@@ -321,21 +320,15 @@ export default function GameCanvas() {
           </button>
         )}
       </div>
-      )}
 
-      {/* Canvas 游戏窗口（游戏中全屏覆盖 + 高DPI） */}
+      {/* Canvas 游戏窗口（响应式缩放 + 高DPI） */}
       <div
         ref={containerRef}
-        className={`overflow-hidden shadow-2xl border-2 border-slate-700 select-none ${
-          isPlaying
-            ? "fixed inset-0 z-50 rounded-none border-0"
-            : "relative rounded-xl sm:rounded-2xl"
-        }`}
+        className="relative overflow-hidden shadow-2xl border-2 border-slate-700 select-none rounded-xl sm:rounded-2xl"
         style={{
-          width: isPlaying ? "100dvw" : "min(100vw - 8px, 800px)",
-          aspectRatio: isPlaying ? undefined : `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
-          height: isPlaying ? "100dvh" : undefined,
-          maxHeight: isPlaying ? undefined : "calc(100vh - 150px)",
+          width: "min(100dvw - 4px, 800px)",
+          aspectRatio: `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
+          maxHeight: "calc(100dvh - 120px)",
           touchAction: "none",
         }}
       >
