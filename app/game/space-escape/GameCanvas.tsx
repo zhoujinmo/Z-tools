@@ -26,12 +26,6 @@ async function getSessionUser(): Promise<AuthUser | null> {
   return null;
 }
 
-/** 检测是否为触屏设备 */
-function isTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
-}
-
 /**
  * 太空逃亡 - Canvas 游戏主组件（支持键盘 + 触屏）
  */
@@ -48,7 +42,6 @@ export default function GameCanvas() {
   const [rewardsMsg, setRewardsMsg] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isMobile] = useState(isTouchDevice);
   const activeKeys = useRef<Record<string, boolean>>({});
 
   /** 加载用户（Supabase session 优先，其次 localStorage guest） */
@@ -324,19 +317,31 @@ export default function GameCanvas() {
       {/* Canvas 游戏窗口（响应式缩放 + 高DPI） */}
       <div
         ref={containerRef}
-        className="relative overflow-hidden shadow-2xl border-2 border-slate-700 select-none rounded-xl sm:rounded-2xl"
+        className={`overflow-hidden select-none ${
+          isPlaying
+            ? "fixed inset-0 z-50 bg-black flex items-center justify-center"
+            : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl"
+        }`}
         style={{
-          width: "min(100dvw - 4px, 800px)",
-          aspectRatio: `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
-          maxHeight: "calc(100dvh - 120px)",
+          width: isPlaying ? "100dvw" : "min(100dvw - 4px, 800px)",
+          maxHeight: isPlaying ? undefined : "calc(100dvh - 120px)",
           touchAction: "none",
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <canvas
           ref={canvasRef}
           width={GAME_CONFIG.width}
           height={GAME_CONFIG.height}
-          className="block w-full h-full bg-black"
+          className={`block bg-black ${
+            isPlaying
+              ? "max-w-full max-h-full w-auto h-auto"
+              : "w-full h-full"
+          }`}
+          style={isPlaying ? { aspectRatio: `${GAME_CONFIG.width}/${GAME_CONFIG.height}` } : undefined}
         />
 
         {/* 游戏结束遮罩 */}
@@ -445,17 +450,6 @@ export default function GameCanvas() {
           )}
         </div>
       </div>
-
-      {/* 隐形触摸控制区域（移动端） */}
-      {isMobile && isPlaying && (
-        <div
-          className="fixed inset-0 z-10 touch-none"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
-        />
-      )}
 
       {/* 登录弹窗 */}
       <GameAuthModal
