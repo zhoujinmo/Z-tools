@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>太空逃亡 — TRAE AI 创造力大赛报名帖</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #111827;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --accent: #3b82f6;
+      --accent2: #8b5cf6;
+      --gold: #f59e0b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      background-image:
+        radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.3), transparent),
+        radial-gradient(1px 1px at 50% 70%, rgba(255,255,255,0.2), transparent),
+        radial-gradient(1.5px 1.5px at 80% 20%, rgba(255,255,255,0.25), transparent),
+        radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.15), transparent),
+        radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.2), transparent),
+        radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.18), transparent);
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+    /* 顶部横幅 */
+    .hero {
+      text-align: center;
+      padding: 48px 24px;
+      margin-bottom: 40px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(59,130,246,0.08) 0%, transparent 60%);
+      animation: pulse 6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 20px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 50px;
+      font-size: 14px;
+      color: var(--accent);
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .hero .subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      position: relative;
+    }
+    .hero .meta {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 20px;
+      position: relative;
+    }
+    .hero .meta span {
+      background: rgba(255,255,255,0.05);
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* 章节 */
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      margin-bottom: 28px;
+    }
+    .section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      font-size: 16px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .section h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 20px 0 10px;
+    }
+    .section h3:first-of-type { margin-top: 0; }
+    .section p { color: var(--text-secondary); margin-bottom: 10px; }
+    .section ul { padding-left: 20px; margin-bottom: 10px; }
+    .section ul li { color: var(--text-secondary); margin-bottom: 6px; }
+    .section ul li strong { color: var(--text); }
+
+    /* 痛点表格 */
+    .pain-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .pain-table th, .pain-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .pain-table th {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pain-table td:first-child { color: #f87171; font-weight: 500; }
+    .pain-table td:last-child { color: #4ade80; }
+
+    /* 价值卡片 */
+    .value-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    @media (max-width: 640px) {
+      .value-cards { grid-template-columns: 1fr; }
+    }
+    .value-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .value-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .value-card p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+
+    /* 页脚 */
+    .footer {
+      text-align: center;
+      color: #475569;
+      font-size: 13px;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 顶部横幅 -->
+    <div class="hero">
+      <div class="hero-badge">TRAE AI 创造力大赛</div>
+      <h1>太空逃亡</h1>
+      <p class="subtitle">AI 驱动的自适应星际生存挑战</p>
+      <div class="meta">
+        <span>赛道：创意开发赛道</span>
+      </div>
+    </div>
+
+    <!-- 一、创意名称 + 创意介绍 -->
+    <div class="section">
+      <h2><span class="num">一</span> 创意名称 + 创意介绍</h2>
+
+      <h3>创意名称</h3>
+      <p>太空逃亡 — AI 驱动的自适应星际生存挑战</p>
+
+      <h3>想解决什么问题</h3>
+      <p>大多数网页躲避游戏难度固定——高手觉得无聊，新手上来就劝退。本项目引入 <strong>AI 动态难度调节</strong>，实时分析玩家的反应速度、失误频率和连续躲避能力，自动匹配最合适的挑战强度。</p>
+      <p>同时，传统小游戏缺乏叙事驱动，玩家容易流失——通过<strong>章节式剧情挑战</strong>，让每次游戏都有推进故事的目标感。</p>
+      <p>此外，网页游戏普遍没有成长体系，玩几次就腻了——通过 <strong>13+ 种成就解锁皮肤</strong>和<strong>在线排行榜</strong>，让玩家始终有新的目标。</p>
+
+      <h3>为什么会想到做这个</h3>
+      <p>小时候玩雷电、是男人就下一百层这类街机游戏时，总希望难度能「读懂」自己的水平，而不是一刀切。结合对 Canvas 2D 绘图和游戏引擎的兴趣，决定从零手写一个带 AI 难度调节 + 剧情驱动的躲避游戏，从陨石的不规则形状渲染到引擎尾焰的呼吸动画都亲力亲为，不依赖任何现成游戏框架。</p>
+
+      <h3>大概是什么产品</h3>
+      <p>一个可直接在浏览器中运行的网页小游戏（PC + 手机均可），无需下载安装。</p>
+    </div>
+
+    <!-- 二、目标用户及痛点 -->
+    <div class="section">
+      <h2><span class="num">二</span> 目标用户及痛点</h2>
+
+      <h3>面向哪些用户</h3>
+      <ul>
+        <li>喜欢街机躲避类小游戏的<strong>休闲玩家</strong></li>
+        <li>工作间隙需要快速放松的<strong>上班族和学生</strong></li>
+        <li>想要挑战高分、冲击排行榜的<strong>竞技型玩家</strong></li>
+      </ul>
+
+      <h3>在什么场景下使用</h3>
+      <p>碎片化时间场景——通勤路上、午休间隙、排队等候时，打开浏览器就能玩一局（单局通常 1-3 分钟）。</p>
+      <ul>
+        <li><strong>PC 端</strong>：方向键操控，手感精准</li>
+        <li><strong>手机端</strong>：支持重力感应倾斜操控，无需虚拟按键，自然跟手</li>
+      </ul>
+
+      <h3>当前痛点</h3>
+      <table class="pain-table">
+        <thead>
+          <tr><th>痛点</th><th>本项目的解决方案</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>固定难度导致新手挫败、高手无聊</td><td>AI 实时分析玩家表现，动态调节难度</td></tr>
+          <tr><td>网页小游戏缺乏剧情和目标感</td><td>章节式剧情挑战，每章有明确任务目标</td></tr>
+          <tr><td>触屏虚拟方向键精度差</td><td>移动端重力感应倾斜操控</td></tr>
+          <tr><td>登录流程太重，劝退用户</td><td>昵称 + 设备指纹即可参与排行榜，无需注册</td></tr>
+          <tr><td>没有成长体系，玩几次就腻</td><td>13+ 种成就解锁皮肤 + 在线排行榜</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 三、价值与意义 -->
+    <div class="section">
+      <h2><span class="num">三</span> 价值与意义</h2>
+
+      <h3>用户体验价值</h3>
+      <div class="value-cards">
+        <div class="value-card">
+          <h4>AI 动态难度调节</h4>
+          <p>实时分析玩家表现，让每个人都在「略有挑战但不会绝望」的区间内游玩，新手不劝退、高手不乏味。</p>
+        </div>
+        <div class="value-card">
+          <h4>章节式剧情挑战</h4>
+          <p>每章设定不同任务目标（如「连续躲避 30 颗陨石」「在陨石雨中存活 90 秒」），让重复游玩有推进感。</p>
+        </div>
+        <div class="value-card">
+          <h4>丰富的成就皮肤体系</h4>
+          <p>13+ 种飞船皮肤通过多样化的成就解锁（积分、等级、连躲、章节通关、特殊挑战等），解锁路径更丰富，兼顾轻度和硬核玩家。</p>
+        </div>
+        <div class="value-card">
+          <h4>零摩擦上手</h4>
+          <p>昵称 + 设备指纹即可参与排行榜，打开即玩，无需注册登录。</p>
+        </div>
+      </div>
+
+      <h3>技术展示价值</h3>
+      <ul>
+        <li>AI 难度调节算法、像素级碰撞检测、Canvas 游戏引擎全部自研，不依赖 Phaser、Unity 等现成游戏框架</li>
+        <li>移动端重力感应交互适配，展示跨端游戏开发能力</li>
+        <li>Next.js 14 + TypeScript + Supabase 全栈架构，完整展示现代 Web 应用从零到一的构建过程</li>
+      </ul>
+    </div>
+
+    <p class="footer">本报名帖由 TRAE AI 辅助生成</p>
+  </div>
+</body>
+</html>

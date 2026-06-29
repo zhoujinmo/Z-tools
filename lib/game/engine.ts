@@ -55,6 +55,19 @@ export class GameEngine {
   private lastFrame = 0;
   private animationId: number | null = null;
 
+  public directX: number | null = null;
+  public directY: number | null = null;
+
+  public setDirectPosition(x: number, y: number): void {
+    this.directX = Math.max(0, Math.min(x, GAME_CONFIG.width - this.player.width));
+    this.directY = Math.max(0, Math.min(y, GAME_CONFIG.height - this.player.height));
+  }
+
+  public clearDirectPosition(): void {
+    this.directX = null;
+    this.directY = null;
+  }
+
   public onStateChange: ((state: GameState, score: number) => void) | null =
     null;
   public onGameOver: ((score: number, stats: GameStats) => void) | null = null;
@@ -317,14 +330,17 @@ export class GameEngine {
 
   private updatePlayer(): void {
     const { player, keys } = this;
-    if (keys.ArrowLeft) player.x -= player.speed;
-    if (keys.ArrowRight) player.x += player.speed;
-    if (keys.ArrowUp) player.y -= player.speed;
-    if (keys.ArrowDown) player.y += player.speed;
-
-    player.x = Math.max(0, Math.min(player.x, GAME_CONFIG.width - player.width));
-    player.y = Math.max(0, Math.min(player.y, GAME_CONFIG.height - player.height));
-
+    if (this.directX !== null && this.directY !== null) {
+      player.x = this.directX;
+      player.y = this.directY;
+    } else {
+      if (keys.ArrowLeft) player.x -= player.speed;
+      if (keys.ArrowRight) player.x += player.speed;
+      if (keys.ArrowUp) player.y -= player.speed;
+      if (keys.ArrowDown) player.y += player.speed;
+      player.x = Math.max(0, Math.min(player.x, GAME_CONFIG.width - player.width));
+      player.y = Math.max(0, Math.min(player.y, GAME_CONFIG.height - player.height));
+    }
     player.thrustPhase += 0.3;
   }
 

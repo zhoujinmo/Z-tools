@@ -160,6 +160,7 @@ export interface GameStats {
 export interface GameProgress {
   totalScore: number;
   totalGames: number;
+  maxScore: number;
   maxLevel: number;
   maxConsecutiveDodges: number;
   /** 星际币余额 */

@@ -15,6 +15,7 @@ function defaultProgress(): GameProgress {
   return {
     totalScore: 0,
     totalGames: 0,
+    maxScore: 0,
     maxLevel: 0,
     maxConsecutiveDodges: 0,
     stellarCoins: 0,
@@ -32,17 +33,18 @@ export function getGameProgress(): GameProgress {
     if (raw) {
       const parsed = JSON.parse(raw);
       // 迁移旧格式（兼容上一版本 SkinProgress）
-      if (!("stellarCoins" in parsed)) {
+      if (!("stellarCoins" in parsed) || !("maxScore" in parsed)) {
         const migrated: GameProgress = {
           totalScore: parsed.totalScore ?? 0,
           totalGames: parsed.totalGames ?? 0,
+          maxScore: parsed.maxScore ?? 0,
           maxLevel: parsed.maxLevel ?? 0,
           maxConsecutiveDodges: parsed.maxConsecutiveDodges ?? 0,
-          stellarCoins: 0,
+          stellarCoins: parsed.stellarCoins ?? 0,
           unlockedSkinIds: parsed.unlockedSkinIds ?? ["default"],
-          skinFragments: {},
-          achievements: [],
-          lastDailyBonusDate: "",
+          skinFragments: parsed.skinFragments ?? {},
+          achievements: parsed.achievements ?? [],
+          lastDailyBonusDate: parsed.lastDailyBonusDate ?? "",
         };
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(migrated));
         return migrated;
@@ -67,6 +69,7 @@ export function mergeProgress(
   return {
     totalScore: Math.max(local.totalScore, server.totalScore),
     totalGames: Math.max(local.totalGames, server.totalGames),
+    maxScore: Math.max(local.maxScore, server.maxScore),
     maxLevel: Math.max(local.maxLevel, server.maxLevel),
     maxConsecutiveDodges: Math.max(local.maxConsecutiveDodges, server.maxConsecutiveDodges),
     stellarCoins: Math.max(local.stellarCoins, server.stellarCoins),
@@ -500,6 +503,7 @@ export function settleGame(
   // 更新基础数据
   progress.totalScore += stats.score;
   progress.totalGames += 1;
+  if (stats.score > progress.maxScore) progress.maxScore = stats.score;
   if (stats.level > progress.maxLevel) progress.maxLevel = stats.level;
   if (stats.consecutiveDodges > progress.maxConsecutiveDodges) {
     progress.maxConsecutiveDodges = stats.consecutiveDodges;

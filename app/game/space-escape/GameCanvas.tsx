@@ -41,6 +41,7 @@ export default function GameCanvas() {
   const engineRef = useRef<GameEngine | null>(null);
   const [state, setState] = useState<GameState>("ready");
   const [score, setScore] = useState(0);
+  const [maxScore, setMaxScore] = useState(() => getGameProgress().maxScore);
   const [skinId, setSkinId] = useState<string>("default");
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
@@ -48,12 +49,7 @@ export default function GameCanvas() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobile] = useState(isTouchDevice);
-  const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false,
-  });
+  const activeKeys = useRef<Record<string, boolean>>({});
 
   /** 加载用户（Supabase session 优先，其次 localStorage guest） */
   useEffect(() => {
@@ -121,14 +117,14 @@ export default function GameCanvas() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (validKeys.includes(e.key)) {
         e.preventDefault();
-        setPressedKeys((prev) => ({ ...prev, [e.key]: true }));
+        activeKeys.current[e.key] = true;
         engineRef.current?.setKey(e.key as never, true);
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (validKeys.includes(e.key)) {
         e.preventDefault();
-        setPressedKeys((prev) => ({ ...prev, [e.key]: false }));
+        activeKeys.current[e.key] = false;
         engineRef.current?.setKey(e.key as never, false);
       }
     };
@@ -141,30 +137,32 @@ export default function GameCanvas() {
     };
   }, []);
 
-  /** 虚拟方向键触摸处理 */
-  const handleDirectionTouchStart = (key: string) => (e: React.TouchEvent) => {
-    e.preventDefault();
-    setPressedKeys((prev) => ({ ...prev, [key]: true }));
-    engineRef.current?.setKey(key as never, true);
-  };
+  /** 隐形触摸区域控制（手指位置直接映射飞机坐标，不卡顿） */
+  const setTouchPosition = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = (clientX - rect.left) / rect.width;
+    const y = (clientY - rect.top) / rect.height;
+    engineRef.current?.setDirectPosition(
+      x * GAME_CONFIG.width,
+      y * GAME_CONFIG.height,
+    );
+  }, []);
 
-  const handleDirectionTouchEnd = (key: string) => (e: React.TouchEvent) => {
-    e.preventDefault();
-    setPressedKeys((prev) => ({ ...prev, [key]: false }));
-    engineRef.current?.setKey(key as never, false);
-  };
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchPosition(touch.clientX, touch.clientY);
+  }, [setTouchPosition]);
 
-  const handleDirectionMouseDown = (key: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setPressedKeys((prev) => ({ ...prev, [key]: true }));
-    engineRef.current?.setKey(key as never, true);
-  };
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchPosition(touch.clientX, touch.clientY);
+  }, [setTouchPosition]);
 
-  const handleDirectionMouseUp = (key: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setPressedKeys((prev) => ({ ...prev, [key]: false }));
-    engineRef.current?.setKey(key as never, false);
-  };
+  const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+    engineRef.current?.clearDirectPosition();
+  }, []);
 
   /** 持久化用户 */
   const persistUser = (u: AuthUser) => {
@@ -213,6 +211,7 @@ export default function GameCanvas() {
       const progress = getGameProgress();
       const { progress: newProgress, rewards } = settleGame(progress, stats);
       saveGameProgress(newProgress);
+      setMaxScore(newProgress.maxScore);
 
       // 构建奖励消息
       const parts: string[] = [];
@@ -256,17 +255,12 @@ export default function GameCanvas() {
         }
       }
 
-      if (!user || user.id === "guest") {
-        setSubmitMsg("登录账号可保存分数到排行榜并同步进度");
-        return;
-      }
-
       // 提交分数到排行榜
       try {
         const res = await fetch("/api/game/scores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score: finalScore }),
+          body: JSON.stringify({ score: finalScore, username: user?.username || "玩家" }),
         });
         const json = await res.json();
         if (json.success) {
@@ -341,9 +335,14 @@ export default function GameCanvas() {
         {isGameOver && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-4">
             <h2 className="text-xl sm:text-2xl md:text-4xl font-bold text-red-500 mb-3">游戏结束</h2>
-            <p className="text-base sm:text-lg md:text-xl mb-2">
+            <p className="text-base sm:text-lg md:text-xl mb-1">
               最终得分：<span className="text-yellow-400 font-bold">{score}</span>
             </p>
+            {maxScore > 0 && (
+              <p className="text-sm sm:text-base text-slate-300 mb-2">
+                历史最佳：<span className="text-yellow-300 font-semibold">{maxScore}</span>
+              </p>
+            )}
             {unlockMsg && (
               <p className="text-xs sm:text-sm text-green-400 mb-2">{unlockMsg}</p>
             )}
@@ -377,7 +376,7 @@ export default function GameCanvas() {
               太空逃亡
             </h2>
             <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-2 text-center">
-              使用方向键或虚拟方向键控制飞船，躲避陨石
+              使用方向键或滑动屏幕控制飞船，躲避陨石
             </p>
             <p className="text-slate-400 text-xs sm:text-sm mb-6 text-center">
               躲过的陨石越多，分数越高
@@ -439,84 +438,15 @@ export default function GameCanvas() {
         </div>
       </div>
 
-      {/* 虚拟方向键（移动端） */}
+      {/* 隐形触摸控制区域（移动端） */}
       {isMobile && isPlaying && (
-        <div className="w-full max-w-[800px] flex justify-center mt-4">
-          <div className="relative w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]">
-            {/* 上 */}
-            <button
-              onTouchStart={handleDirectionTouchStart("ArrowUp")}
-              onTouchEnd={handleDirectionTouchEnd("ArrowUp")}
-              onTouchCancel={handleDirectionTouchEnd("ArrowUp")}
-              onMouseDown={handleDirectionMouseDown("ArrowUp")}
-              onMouseUp={handleDirectionMouseUp("ArrowUp")}
-              onMouseLeave={handleDirectionMouseUp("ArrowUp")}
-              className={`absolute left-1/2 -translate-x-1/2 top-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
-                pressedKeys.ArrowUp
-                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
-                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
-              }`}
-            >
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            {/* 下 */}
-            <button
-              onTouchStart={handleDirectionTouchStart("ArrowDown")}
-              onTouchEnd={handleDirectionTouchEnd("ArrowDown")}
-              onTouchCancel={handleDirectionTouchEnd("ArrowDown")}
-              onMouseDown={handleDirectionMouseDown("ArrowDown")}
-              onMouseUp={handleDirectionMouseUp("ArrowDown")}
-              onMouseLeave={handleDirectionMouseUp("ArrowDown")}
-              className={`absolute left-1/2 -translate-x-1/2 bottom-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
-                pressedKeys.ArrowDown
-                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
-                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
-              }`}
-            >
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {/* 左 */}
-            <button
-              onTouchStart={handleDirectionTouchStart("ArrowLeft")}
-              onTouchEnd={handleDirectionTouchEnd("ArrowLeft")}
-              onTouchCancel={handleDirectionTouchEnd("ArrowLeft")}
-              onMouseDown={handleDirectionMouseDown("ArrowLeft")}
-              onMouseUp={handleDirectionMouseUp("ArrowLeft")}
-              onMouseLeave={handleDirectionMouseUp("ArrowLeft")}
-              className={`absolute top-1/2 -translate-y-1/2 left-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
-                pressedKeys.ArrowLeft
-                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
-                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
-              }`}
-            >
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            {/* 右 */}
-            <button
-              onTouchStart={handleDirectionTouchStart("ArrowRight")}
-              onTouchEnd={handleDirectionTouchEnd("ArrowRight")}
-              onTouchCancel={handleDirectionTouchEnd("ArrowRight")}
-              onMouseDown={handleDirectionMouseDown("ArrowRight")}
-              onMouseUp={handleDirectionMouseUp("ArrowRight")}
-              onMouseLeave={handleDirectionMouseUp("ArrowRight")}
-              className={`absolute top-1/2 -translate-y-1/2 right-0 w-[56px] h-[56px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center transition-all select-none ${
-                pressedKeys.ArrowRight
-                  ? "bg-blue-500/80 shadow-lg shadow-blue-500/50 scale-95"
-                  : "bg-slate-800/70 backdrop-blur hover:bg-slate-700/70"
-              }`}
-            >
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <div
+          className="fixed inset-0 z-10 touch-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+        />
       )}
 
       {/* 登录弹窗 */}
