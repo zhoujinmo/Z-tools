@@ -145,43 +145,6 @@ export function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void 
   ctx.fillRect(x, y, width, height);
 }
 
-/** 陨石被击中后的分裂逻辑：若尺寸大于阈值则分裂为两个小陨石 */
-export function splitAsteroid(
-  asteroid: Asteroid,
-  gameW: number
-): Asteroid[] {
-  const minSplitSize = 28;
-  if (asteroid.size < minSplitSize) return [];
-
-  const newSize = asteroid.size * 0.55;
-  const offset = newSize * 0.5;
-
-  const childA: Asteroid = {
-    id: ++asteroidIdCounter,
-    x: asteroid.x - offset,
-    y: asteroid.y + offset,
-    size: newSize,
-    speed: asteroid.speed * (1 + Math.random() * 0.3),
-    rotation: Math.random() * Math.PI * 2,
-    rotationSpeed: (Math.random() - 0.5) * 0.06,
-    scored: false,
-    vertices: Array.from({ length: 8 }, () => 0.7 + Math.random() * 0.4),
-    palette: asteroid.palette,
-    shapeType: Math.floor(Math.random() * 3),
-    regmaglypts: null,
-  };
-
-  const childB: Asteroid = {
-    ...childA,
-    id: ++asteroidIdCounter,
-    x: asteroid.x + offset,
-    y: asteroid.y + offset,
-    vertices: Array.from({ length: 8 }, () => 0.7 + Math.random() * 0.4),
-  };
-
-  return [childA, childB];
-}
-
 /* ===================== 陨石 ===================== */
 
 /**

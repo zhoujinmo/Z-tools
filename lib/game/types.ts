@@ -228,7 +228,7 @@ export const GAME_CONFIG = {
     height: 14,
     speed: 8,
     /** 自动发射间隔（毫秒） */
-    fireInterval: 350,
+    fireInterval: 150,
     /** 同屏最大子弹数 */
     maxBullets: 20,
     /** 击中陨石得分 */

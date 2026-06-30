@@ -27,7 +27,6 @@ import {
   drawCoin,
   drawFloatText,
   drawPlayer,
-  splitAsteroid,
 } from "@/lib/game/entities";
 import {
   playBgm,
@@ -414,9 +413,8 @@ export class GameEngine {
     this.asteroids = surviving;
   }
 
-  /** 子弹系统：自动发射 + 移动 + 碰撞陨石（分裂） */
+  /** 子弹系统：自动连射 + 移动 + 碰撞销毁陨石 */
   private updateBullets(now: number): void {
-    // 自动发射
     if (this.skin.canShoot && now - this.lastBulletFired > GAME_CONFIG.bullet.fireInterval) {
       if (this.bullets.length < GAME_CONFIG.bullet.maxBullets) {
         this.bullets.push(createBullet(this.player));
@@ -427,10 +425,8 @@ export class GameEngine {
     const survivingBullets: Bullet[] = [];
     for (const bullet of this.bullets) {
       bullet.y -= bullet.speed;
-
       if (bullet.y + bullet.height < 0) continue;
 
-      // 子弹vs陨石碰撞（AABB）
       let hit = false;
       for (const asteroid of this.asteroids) {
         if (
@@ -441,14 +437,6 @@ export class GameEngine {
         ) {
           hit = true;
           this.score += GAME_CONFIG.bullet.scorePerHit;
-
-          // 分裂或销毁陨石
-          const children = splitAsteroid(asteroid, this.gameWidth);
-          if (children.length > 0) {
-            this.asteroids.push(...children);
-          }
-
-          // 浮动得分文字
           this.floatTexts.push({
             x: asteroid.x + asteroid.size / 2,
             y: asteroid.y,
@@ -456,19 +444,14 @@ export class GameEngine {
             life: 24,
             maxLife: 24,
           });
-
-          asteroid.size = 0; // 标记为已销毁
+          asteroid.size = 0;
           break;
         }
       }
 
-      if (!hit) {
-        survivingBullets.push(bullet);
-      }
+      if (!hit) survivingBullets.push(bullet);
     }
     this.bullets = survivingBullets;
-
-    // 清理已销毁的陨石
     this.asteroids = this.asteroids.filter((a) => a.size > 0);
   }
 
