@@ -45,43 +45,78 @@ function useLocalStorage(): boolean {
   return !process.env.NEXT_PUBLIC_SUPABASE_URL;
 }
 
-/** GET /api/game/scores — 获取排行榜 Top 20 */
+/** 聚合：每个用户只保留历史最高分 */
+function aggregateTopPerUser(scores: ScoreEntry[]): ScoreEntry[] {
+  const map = new Map<string, ScoreEntry>();
+  for (const entry of scores) {
+    const existing = map.get(entry.username);
+    if (!existing || entry.score > existing.score) {
+      map.set(entry.username, entry);
+    }
+  }
+  return Array.from(map.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+}
+
+/** GET /api/game/scores — 获取排行榜（每用户最高分 Top 20） */
 export async function GET() {
   try {
     if (useLocalStorage()) {
       const scores = await readLocalScores();
-      const top = scores.sort((a, b) => b.score - a.score).slice(0, 20);
+      const top = aggregateTopPerUser(scores);
       return NextResponse.json<ApiResponse<ScoreEntry[]>>({
         success: true,
         data: top,
       });
     }
 
+    // 尝试用 Supabase 聚合查询：按 username 取最大 score
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("game_scores")
-      .select("id, username, score, created_at")
-      .order("score", { ascending: false })
+      .select("username, max_score:score.max()")
+      .order("max_score", { ascending: false })
       .limit(20);
 
     if (error) {
-      console.warn("[scores GET] Supabase failed, falling back to local", error.message);
-      const scores = await readLocalScores();
-      const top = scores.sort((a, b) => b.score - a.score).slice(0, 20);
+      console.warn("[scores GET] Supabase aggregate failed, falling back", error.message);
+      const { data: all, error: fallbackError } = await admin
+        .from("game_scores")
+        .select("id, username, score, created_at")
+        .order("score", { ascending: false })
+        .limit(200);
+
+      if (!fallbackError && all) {
+        const scores = all.map((row: ScoreEntry) => ({
+          id: row.id,
+          username: row.username,
+          score: row.score,
+          created_at: row.created_at,
+        }));
+        const top = aggregateTopPerUser(scores);
+        return NextResponse.json<ApiResponse<ScoreEntry[]>>({
+          success: true,
+          data: top,
+        });
+      }
+
+      // 最后兜底到本地
+      const local = await readLocalScores();
       return NextResponse.json<ApiResponse<ScoreEntry[]>>({
         success: true,
-        data: top,
+        data: aggregateTopPerUser(local),
       });
     }
 
-    const scores: ScoreEntry[] = (
-      (data as unknown as ScoreEntry[]) || []
-    ).map((row) => ({
-      id: row.id,
-      username: row.username,
-      score: row.score,
-      created_at: row.created_at,
-    }));
+    const scores: ScoreEntry[] = ((data as { username: string; max_score: number }[]) || []).map(
+      (row) => ({
+        id: row.username,
+        username: row.username,
+        score: row.max_score,
+        created_at: "",
+      })
+    );
 
     return NextResponse.json<ApiResponse<ScoreEntry[]>>({
       success: true,
@@ -90,10 +125,9 @@ export async function GET() {
   } catch (err) {
     console.error("[scores GET]", err);
     const scores = await readLocalScores().catch(() => [] as ScoreEntry[]);
-    const top = scores.sort((a, b) => b.score - a.score).slice(0, 20);
     return NextResponse.json<ApiResponse<ScoreEntry[]>>({
       success: true,
-      data: top,
+      data: aggregateTopPerUser(scores),
     });
   }
 }
