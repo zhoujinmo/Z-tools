@@ -71,37 +71,15 @@ export async function GET() {
       });
     }
 
-    // 尝试用 Supabase 聚合查询：按 username 取最大 score
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("game_scores")
-      .select("username, max_score:score.max()")
-      .order("max_score", { ascending: false })
-      .limit(20);
+      .select("id, username, score, created_at")
+      .order("score", { ascending: false })
+      .limit(200);
 
     if (error) {
-      console.warn("[scores GET] Supabase aggregate failed, falling back", error.message);
-      const { data: all, error: fallbackError } = await admin
-        .from("game_scores")
-        .select("id, username, score, created_at")
-        .order("score", { ascending: false })
-        .limit(200);
-
-      if (!fallbackError && all) {
-        const scores = all.map((row: ScoreEntry) => ({
-          id: row.id,
-          username: row.username,
-          score: row.score,
-          created_at: row.created_at,
-        }));
-        const top = aggregateTopPerUser(scores);
-        return NextResponse.json<ApiResponse<ScoreEntry[]>>({
-          success: true,
-          data: top,
-        });
-      }
-
-      // 最后兜底到本地
+      console.warn("[scores GET] Supabase query failed, falling back to local", error.message);
       const local = await readLocalScores();
       return NextResponse.json<ApiResponse<ScoreEntry[]>>({
         success: true,
@@ -109,18 +87,18 @@ export async function GET() {
       });
     }
 
-    const scores: ScoreEntry[] = ((data as { username: string; max_score: number }[]) || []).map(
-      (row) => ({
-        id: row.username,
-        username: row.username,
-        score: row.max_score,
-        created_at: "",
-      })
-    );
+    const scores: ScoreEntry[] = (
+      (data as unknown as ScoreEntry[]) || []
+    ).map((row) => ({
+      id: row.id,
+      username: row.username,
+      score: row.score,
+      created_at: row.created_at,
+    }));
 
     return NextResponse.json<ApiResponse<ScoreEntry[]>>({
       success: true,
-      data: scores,
+      data: aggregateTopPerUser(scores),
     });
   } catch (err) {
     console.error("[scores GET]", err);
