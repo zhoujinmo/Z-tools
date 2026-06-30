@@ -32,6 +32,8 @@ import {
 
 export class GameEngine {
   private ctx: CanvasRenderingContext2D;
+  private gameWidth: number;
+  private gameHeight: number;
   private player: Player;
   private asteroids: Asteroid[] = [];
   private stars: Star[];
@@ -59,8 +61,8 @@ export class GameEngine {
   public directY: number | null = null;
 
   public setDirectPosition(x: number, y: number): void {
-    this.directX = Math.max(0, Math.min(x, GAME_CONFIG.width - this.player.width));
-    this.directY = Math.max(0, Math.min(y, GAME_CONFIG.height - this.player.height));
+    this.directX = Math.max(0, Math.min(x, this.gameWidth - this.player.width));
+    this.directY = Math.max(0, Math.min(y, this.gameHeight - this.player.height));
   }
 
   public clearDirectPosition(): void {
@@ -81,13 +83,24 @@ export class GameEngine {
   private floatTexts: FloatText[] = [];
   private lastCoinSpawn = 0;
 
-  constructor(ctx: CanvasRenderingContext2D, skin: SkinStyle) {
+  constructor(ctx: CanvasRenderingContext2D, skin: SkinStyle, width?: number, height?: number) {
     this.ctx = ctx;
+    this.gameWidth = width ?? GAME_CONFIG.width;
+    this.gameHeight = height ?? GAME_CONFIG.height;
     this.skin = skin;
-    this.player = createPlayer();
-    this.stars = createStars();
-    this.nebulae = createNebulae();
+    this.player = createPlayer(this.gameWidth, this.gameHeight);
+    this.stars = createStars(this.gameWidth, this.gameHeight);
+    this.nebulae = createNebulae(this.gameWidth, this.gameHeight);
     this.loadSkinImage(skin.imageUrl);
+  }
+
+  /** 更新游戏视口尺寸（窗口 resize 时调用） */
+  resize(width: number, height: number): void {
+    this.gameWidth = width;
+    this.gameHeight = height;
+    this.player = createPlayer(this.gameWidth, this.gameHeight);
+    this.stars = createStars(this.gameWidth, this.gameHeight);
+    this.nebulae = createNebulae(this.gameWidth, this.gameHeight);
   }
 
   private loadSkinImage(url: string | undefined): void {
@@ -314,16 +327,16 @@ export class GameEngine {
   private updateBackground(): void {
     for (const star of this.stars) {
       star.y += star.speed;
-      if (star.y > GAME_CONFIG.height) {
+      if (star.y > this.gameHeight) {
         star.y = -2;
-        star.x = Math.random() * GAME_CONFIG.width;
+        star.x = Math.random() * this.gameWidth;
       }
     }
     for (const nebula of this.nebulae) {
       nebula.y += nebula.speed;
-      if (nebula.y - nebula.radius > GAME_CONFIG.height) {
+      if (nebula.y - nebula.radius > this.gameHeight) {
         nebula.y = -nebula.radius;
-        nebula.x = Math.random() * GAME_CONFIG.width;
+        nebula.x = Math.random() * this.gameWidth;
       }
     }
   }
@@ -338,8 +351,8 @@ export class GameEngine {
       if (keys.ArrowRight) player.x += player.speed;
       if (keys.ArrowUp) player.y -= player.speed;
       if (keys.ArrowDown) player.y += player.speed;
-      player.x = Math.max(0, Math.min(player.x, GAME_CONFIG.width - player.width));
-      player.y = Math.max(0, Math.min(player.y, GAME_CONFIG.height - player.height));
+      player.x = Math.max(0, Math.min(player.x, this.gameWidth - player.width));
+      player.y = Math.max(0, Math.min(player.y, this.gameHeight - player.height));
     }
     player.thrustPhase += 0.3;
   }
@@ -349,7 +362,7 @@ export class GameEngine {
       GAME_CONFIG.asteroid.spawnInterval * Math.pow(0.85, this.level - 1);
     if (now - this.lastSpawn > interval) {
       const difficultyMultiplier = 1 + (this.level - 1) * 0.1;
-      this.asteroids.push(createAsteroid(difficultyMultiplier));
+      this.asteroids.push(createAsteroid(difficultyMultiplier, this.gameWidth));
       this.lastSpawn = now;
     }
   }
@@ -370,7 +383,7 @@ export class GameEngine {
         return;
       }
 
-      if (asteroid.y > GAME_CONFIG.height) {
+      if (asteroid.y > this.gameHeight) {
         if (!asteroid.scored) {
           this.score += GAME_CONFIG.scoring.perAsteroid;
           this.consecutiveDodges++;
@@ -398,7 +411,7 @@ export class GameEngine {
   private spawnCoins(now: number): void {
     const interval = 3000 + Math.random() * 2000; // 3~5 秒
     if (now - this.lastCoinSpawn > interval) {
-      this.coins.push(createCoin());
+      this.coins.push(createCoin(this.gameWidth));
       this.lastCoinSpawn = now;
     }
   }
@@ -427,7 +440,7 @@ export class GameEngine {
       }
 
       // 出屏消失
-      if (coin.y > GAME_CONFIG.height) continue;
+      if (coin.y > this.gameHeight) continue;
       surviving.push(coin);
     }
     this.coins = surviving;
@@ -465,7 +478,7 @@ export class GameEngine {
 
   private render(): void {
     const { ctx } = this;
-    drawBackground(ctx, this.stars, this.nebulae);
+    drawBackground(ctx, this.stars, this.nebulae, this.gameWidth, this.gameHeight);
 
     for (const asteroid of this.asteroids) {
       drawAsteroid(ctx, asteroid);

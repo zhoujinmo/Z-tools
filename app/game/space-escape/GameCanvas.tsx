@@ -44,6 +44,10 @@ export default function GameCanvas() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const activeKeys = useRef<Record<string, boolean>>({});
 
+  const isReady = state === "ready";
+  const isPlaying = state === "playing";
+  const isGameOver = state === "gameover";
+
   /** 加载用户（Supabase session 优先，其次 localStorage guest） */
   useEffect(() => {
     (async () => {
@@ -68,20 +72,22 @@ export default function GameCanvas() {
     setSkinId(getSavedSkinId());
   }, []);
 
-  /** 初始化引擎（含 devicePixelRatio 适配） */
+  /** 初始化引擎（含 devicePixelRatio + 动态视口适配） */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const vw = GAME_CONFIG.width;
+    const vh = GAME_CONFIG.height;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = GAME_CONFIG.width * dpr;
-    canvas.height = GAME_CONFIG.height * dpr;
+    canvas.width = vw * dpr;
+    canvas.height = vh * dpr;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    const engine = new GameEngine(ctx, getSkinById(skinId));
+    const engine = new GameEngine(ctx, getSkinById(skinId), vw, vh);
     engineRef.current = engine;
 
     engine.onStateChange = (newState, newScore) => {
@@ -102,6 +108,54 @@ export default function GameCanvas() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skinId]);
+
+  /** 全屏游戏时适配视口尺寸 */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const engine = engineRef.current;
+    if (!canvas || !engine) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    const setViewport = (w: number, h: number) => {
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.scale(dpr, dpr);
+      engine.resize(w, h);
+    };
+
+    if (isPlaying) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      setViewport(vw, vh);
+    } else {
+      setViewport(GAME_CONFIG.width, GAME_CONFIG.height);
+    }
+
+    engine.renderReady();
+  }, [isPlaying]);
+
+  /** 窗口 resize 时更新视口 */
+  useEffect(() => {
+    if (!isPlaying) return;
+    const canvas = canvasRef.current;
+    const engine = engineRef.current;
+    if (!canvas || !engine) return;
+
+    const handleResize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = vw * dpr;
+      canvas.height = vh * dpr;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.scale(dpr, dpr);
+      engine.resize(vw, vh);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isPlaying]);
 
   /** 切换皮肤 */
   useEffect(() => {
@@ -277,10 +331,6 @@ export default function GameCanvas() {
     [user]
   );
 
-  const isReady = state === "ready";
-  const isPlaying = state === "playing";
-  const isGameOver = state === "gameover";
-
   return (
     <div className="flex flex-col items-center gap-2 sm:gap-3 w-full">
       {/* 用户信息栏 */}
@@ -319,11 +369,13 @@ export default function GameCanvas() {
         ref={containerRef}
         className={`overflow-hidden select-none ${
           isPlaying
-            ? "fixed inset-0 z-50 bg-black flex items-center justify-center"
+            ? "fixed inset-0 z-50 bg-black"
             : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl"
         }`}
         style={{
           width: isPlaying ? "100dvw" : "min(100dvw - 4px, 800px)",
+          height: isPlaying ? "100dvh" : undefined,
+          aspectRatio: isPlaying ? undefined : `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
           maxHeight: isPlaying ? undefined : "calc(100dvh - 120px)",
           touchAction: "none",
         }}
@@ -334,14 +386,7 @@ export default function GameCanvas() {
       >
         <canvas
           ref={canvasRef}
-          width={GAME_CONFIG.width}
-          height={GAME_CONFIG.height}
-          className={`block bg-black ${
-            isPlaying
-              ? "max-w-full max-h-full w-auto h-auto"
-              : "w-full h-full"
-          }`}
-          style={isPlaying ? { aspectRatio: `${GAME_CONFIG.width}/${GAME_CONFIG.height}` } : undefined}
+          className="block w-full h-full bg-black"
         />
 
         {/* 游戏结束遮罩 */}

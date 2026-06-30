@@ -17,13 +17,14 @@ function rand(min: number, max: number): number {
 /* ===================== 玩家 ===================== */
 
 /** 创建玩家初始状态（位于底部中央） */
-export function createPlayer(): Player {
+export function createPlayer(w: number = GAME_CONFIG.width, h: number = GAME_CONFIG.height): Player {
+  const pScale = Math.min(w, h) / 600;
   return {
-    x: GAME_CONFIG.width / 2 - GAME_CONFIG.player.width / 2,
-    y: GAME_CONFIG.height - GAME_CONFIG.player.height - 30,
-    width: GAME_CONFIG.player.width,
-    height: GAME_CONFIG.player.height,
-    speed: GAME_CONFIG.player.speed,
+    x: w / 2 - 20,
+    y: h - 44 * pScale - 30,
+    width: 40 * pScale,
+    height: 44 * pScale,
+    speed: 5 * pScale,
     thrustPhase: 0,
   };
 }
@@ -149,7 +150,7 @@ const ASTEROID_PALETTES: [string, string, string][] = [
 let asteroidIdCounter = 0;
 
 /** 创建一颗陨石（从顶部随机位置生成） */
-export function createAsteroid(difficultyMultiplier = 1): Asteroid {
+export function createAsteroid(difficultyMultiplier = 1, gameW: number = GAME_CONFIG.width): Asteroid {
   const size = rand(
     GAME_CONFIG.asteroid.minSize,
     GAME_CONFIG.asteroid.maxSize
@@ -206,7 +207,7 @@ export function createAsteroid(difficultyMultiplier = 1): Asteroid {
 
   return {
     id: ++asteroidIdCounter,
-    x: rand(0, GAME_CONFIG.width - size),
+    x: rand(0, gameW - size),
     y: -size,
     size,
     speed: baseSpeed * difficultyMultiplier,
@@ -315,12 +316,13 @@ export function drawAsteroid(
 /* ===================== 星空背景 ===================== */
 
 /** 初始化星星粒子 */
-export function createStars(): Star[] {
+export function createStars(w: number = GAME_CONFIG.width, h: number = GAME_CONFIG.height): Star[] {
+  const count = Math.round(GAME_CONFIG.star.count * (w / GAME_CONFIG.width));
   const stars: Star[] = [];
-  for (let i = 0; i < GAME_CONFIG.star.count; i++) {
+  for (let i = 0; i < count; i++) {
     stars.push({
-      x: rand(0, GAME_CONFIG.width),
-      y: rand(0, GAME_CONFIG.height),
+      x: rand(0, w),
+      y: rand(0, h),
       size: rand(0.5, 2.5),
       speed: rand(0.3, 2.5),
       brightness: rand(0.3, 1),
@@ -330,7 +332,7 @@ export function createStars(): Star[] {
 }
 
 /** 初始化星云团 */
-export function createNebulae(): Nebula[] {
+export function createNebulae(w: number = GAME_CONFIG.width, h: number = GAME_CONFIG.height): Nebula[] {
   const colors = [
     "rgba(59,130,246,0.15)",
     "rgba(168,85,247,0.12)",
@@ -338,10 +340,11 @@ export function createNebulae(): Nebula[] {
     "rgba(20,184,166,0.12)",
   ];
   const nebulae: Nebula[] = [];
-  for (let i = 0; i < GAME_CONFIG.nebula.count; i++) {
+  const count = Math.max(2, Math.round(GAME_CONFIG.nebula.count * (w / GAME_CONFIG.width)));
+  for (let i = 0; i < count; i++) {
     nebulae.push({
-      x: rand(0, GAME_CONFIG.width),
-      y: rand(0, GAME_CONFIG.height),
+      x: rand(0, w),
+      y: rand(0, h),
       radius: rand(120, 220),
       speed: rand(0.15, 0.4),
       color: colors[i % colors.length],
@@ -358,15 +361,17 @@ export function createNebulae(): Nebula[] {
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
   stars: Star[],
-  nebulae: Nebula[]
+  nebulae: Nebula[],
+  w: number = GAME_CONFIG.width,
+  h: number = GAME_CONFIG.height,
 ): void {
   // 深空底色（带轻微渐变）
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, GAME_CONFIG.height);
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
   bgGrad.addColorStop(0, "#020617");
   bgGrad.addColorStop(0.5, "#0f172a");
   bgGrad.addColorStop(1, "#1e1b4b");
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, GAME_CONFIG.width, GAME_CONFIG.height);
+  ctx.fillRect(0, 0, w, h);
 
   // 远景星云团
   for (const nebula of nebulae) {
@@ -437,11 +442,11 @@ export function checkCollision(
 let coinIdCounter = 0;
 
 /** 创建一枚星际币（从顶部随机位置生成） */
-export function createCoin(): Coin {
+export function createCoin(gameW: number = GAME_CONFIG.width): Coin {
   const size = 18;
   return {
     id: ++coinIdCounter,
-    x: rand(size, GAME_CONFIG.width - size),
+    x: rand(size, gameW - size),
     y: -size,
     size,
     speed: rand(0.5, 1.5),
