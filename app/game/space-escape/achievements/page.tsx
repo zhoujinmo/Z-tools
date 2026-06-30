@@ -29,7 +29,7 @@ function getProgress(achievement: AchievementDef, progress: GameProgress): Achie
     case "level-champion":
       return { current: progress.maxLevel, target: 12, label: "最高等级" };
     case "score-hunter":
-      return { current: progress.totalScore, target: 800, label: "累计分数" };
+      return { current: progress.maxScore, target: 800, label: "最高单局分数" };
     case "veteran":
       return { current: progress.totalGames, target: 30, label: "累计局数" };
     case "wealthy":
