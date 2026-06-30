@@ -461,6 +461,13 @@ export default function GameCanvas() {
                 <span>🎵</span>
                 <span>背景音乐</span>
               </a>
+              <a
+                href="/game/space-escape/achievements"
+                className="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-3 bg-yellow-600/30 hover:bg-yellow-600/50 rounded-xl text-white text-xs sm:text-sm transition"
+              >
+                <span>🏆</span>
+                <span>成就</span>
+              </a>
             </div>
           </div>
         )}
