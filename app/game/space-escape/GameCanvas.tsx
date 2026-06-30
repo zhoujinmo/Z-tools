@@ -381,15 +381,14 @@ export default function GameCanvas() {
         className={`select-none ${
           isPlaying
             ? "fixed inset-0 z-50 bg-black overflow-hidden"
-            : isReady
-            ? "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl w-full max-w-[800px]"
-            : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl overflow-hidden"
-        }`}
+            : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl"
+        } ${isReady ? "" : "overflow-hidden"}`}
         style={{
-          width: isPlaying ? "100dvw" : isReady ? undefined : "min(100dvw - 4px, 800px)",
+          width: isPlaying ? "100dvw" : "min(100dvw - 4px, 800px)",
           height: isPlaying ? "100dvh" : undefined,
           aspectRatio: isPlaying || isReady ? undefined : `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
           maxHeight: isPlaying ? undefined : isReady ? undefined : "calc(100dvh - 120px)",
+          ...(isReady ? { minHeight: "440px" } : {}),
           touchAction: "none",
         }}
         onTouchStart={handleTouchStart}
