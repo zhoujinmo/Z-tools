@@ -232,6 +232,6 @@ export const GAME_CONFIG = {
     /** 同屏最大子弹数 */
     maxBullets: 20,
     /** 击中陨石得分 */
-    scorePerHit: 5,
+    scorePerHit: 10,
   },
 } as const;
