@@ -69,7 +69,11 @@ export default function GameCanvas() {
 
   /** 仅在客户端挂载后读取皮肤，避免 hydration 不匹配 */
   useEffect(() => {
-    setSkinId(getSavedSkinId());
+    const updateSkin = () => { setSkinId(getSavedSkinId()); };
+    updateSkin();
+    // 当从皮肤选择页返回时（包括 bfcache 恢复），重新读取皮肤
+    window.addEventListener("pageshow", updateSkin);
+    return () => window.removeEventListener("pageshow", updateSkin);
   }, []);
 
   /** 初始化引擎（含 devicePixelRatio + 动态视口适配） */
@@ -374,16 +378,18 @@ export default function GameCanvas() {
       {/* Canvas 游戏窗口（响应式缩放 + 高DPI） */}
       <div
         ref={containerRef}
-        className={`overflow-hidden select-none ${
+        className={`select-none ${
           isPlaying
-            ? "fixed inset-0 z-50 bg-black"
-            : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl"
+            ? "fixed inset-0 z-50 bg-black overflow-hidden"
+            : isReady
+            ? "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl w-full max-w-[800px]"
+            : "relative shadow-2xl border-2 border-slate-700 rounded-xl sm:rounded-2xl overflow-hidden"
         }`}
         style={{
-          width: isPlaying ? "100dvw" : "min(100dvw - 4px, 800px)",
+          width: isPlaying ? "100dvw" : isReady ? undefined : "min(100dvw - 4px, 800px)",
           height: isPlaying ? "100dvh" : undefined,
-          aspectRatio: isPlaying ? undefined : `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
-          maxHeight: isPlaying ? undefined : "calc(100dvh - 120px)",
+          aspectRatio: isPlaying || isReady ? undefined : `${GAME_CONFIG.width} / ${GAME_CONFIG.height}`,
+          maxHeight: isPlaying ? undefined : isReady ? undefined : "calc(100dvh - 120px)",
           touchAction: "none",
         }}
         onTouchStart={handleTouchStart}

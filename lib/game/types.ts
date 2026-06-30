@@ -22,6 +22,15 @@ export interface Player {
   thrustPhase: number;
 }
 
+/** 子弹/激光 */
+export interface Bullet {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+}
+
 /** 陨石障碍物 */
 export interface Asteroid {
   id: number;
@@ -109,6 +118,8 @@ export interface SkinStyle {
   rarity: SkinRarity;
   /** 解锁途径列表 */
   unlockMethods: UnlockMethod[];
+  /** 是否可发射子弹（泰坦系列专属） */
+  canShoot?: boolean;
 }
 
 /** 成就定义 */
@@ -211,5 +222,16 @@ export const GAME_CONFIG = {
   },
   nebula: {
     count: 4,
+  },
+  bullet: {
+    width: 4,
+    height: 14,
+    speed: 8,
+    /** 自动发射间隔（毫秒） */
+    fireInterval: 350,
+    /** 同屏最大子弹数 */
+    maxBullets: 20,
+    /** 击中陨石得分 */
+    scorePerHit: 5,
   },
 } as const;

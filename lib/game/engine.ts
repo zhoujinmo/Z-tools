@@ -1,5 +1,6 @@
 import type {
   Asteroid,
+  Bullet,
   Coin,
   FloatText,
   GameState,
@@ -15,15 +16,18 @@ import {
   checkCollision,
   checkCoinCollision,
   createAsteroid,
+  createBullet,
   createCoin,
   createNebulae,
   createPlayer,
   createStars,
   drawAsteroid,
   drawBackground,
+  drawBullet,
   drawCoin,
   drawFloatText,
   drawPlayer,
+  splitAsteroid,
 } from "@/lib/game/entities";
 import {
   playBgm,
@@ -85,6 +89,9 @@ export class GameEngine {
   private collectedCoins = 0;
   private floatTexts: FloatText[] = [];
   private lastCoinSpawn = 0;
+
+  private bullets: Bullet[] = [];
+  private lastBulletFired = 0;
 
   constructor(ctx: CanvasRenderingContext2D, skin: SkinStyle, width?: number, height?: number) {
     this.ctx = ctx;
@@ -266,8 +273,10 @@ export class GameEngine {
     this.coins = [];
     this.collectedCoins = 0;
     this.floatTexts = [];
+    this.bullets = [];
     this.lastSpawn = 0;
     this.lastCoinSpawn = 0;
+    this.lastBulletFired = 0;
     this.lastFrame = performance.now();
 
     playBgm();
@@ -294,6 +303,7 @@ export class GameEngine {
     this.coins = [];
     this.collectedCoins = 0;
     this.floatTexts = [];
+    this.bullets = [];
     this.player = createPlayer();
     this.render();
     this.notifyStateChange();
@@ -318,8 +328,9 @@ export class GameEngine {
 
   private update(delta: number, now: number): void {
     this.updateBackground();
-    this.updatePlayer();
+    this.updatePlayer(now);
     this.spawnAsteroids(now);
+    this.updateBullets(now);
     this.updateAsteroids();
     this.spawnCoins(now);
     this.updateCoins();
@@ -344,7 +355,7 @@ export class GameEngine {
     }
   }
 
-  private updatePlayer(): void {
+  private updatePlayer(_now?: number): void {
     const { player, keys } = this;
     if (this.directX !== null && this.directY !== null) {
       player.x = this.directX;
@@ -401,6 +412,64 @@ export class GameEngine {
       surviving.push(asteroid);
     }
     this.asteroids = surviving;
+  }
+
+  /** 子弹系统：自动发射 + 移动 + 碰撞陨石（分裂） */
+  private updateBullets(now: number): void {
+    // 自动发射
+    if (this.skin.canShoot && now - this.lastBulletFired > GAME_CONFIG.bullet.fireInterval) {
+      if (this.bullets.length < GAME_CONFIG.bullet.maxBullets) {
+        this.bullets.push(createBullet(this.player));
+        this.lastBulletFired = now;
+      }
+    }
+
+    const survivingBullets: Bullet[] = [];
+    for (const bullet of this.bullets) {
+      bullet.y -= bullet.speed;
+
+      if (bullet.y + bullet.height < 0) continue;
+
+      // 子弹vs陨石碰撞（AABB）
+      let hit = false;
+      for (const asteroid of this.asteroids) {
+        if (
+          bullet.x < asteroid.x + asteroid.size &&
+          bullet.x + bullet.width > asteroid.x &&
+          bullet.y < asteroid.y + asteroid.size &&
+          bullet.y + bullet.height > asteroid.y
+        ) {
+          hit = true;
+          this.score += GAME_CONFIG.bullet.scorePerHit;
+
+          // 分裂或销毁陨石
+          const children = splitAsteroid(asteroid, this.gameWidth);
+          if (children.length > 0) {
+            this.asteroids.push(...children);
+          }
+
+          // 浮动得分文字
+          this.floatTexts.push({
+            x: asteroid.x + asteroid.size / 2,
+            y: asteroid.y,
+            text: `+${GAME_CONFIG.bullet.scorePerHit}`,
+            life: 24,
+            maxLife: 24,
+          });
+
+          asteroid.size = 0; // 标记为已销毁
+          break;
+        }
+      }
+
+      if (!hit) {
+        survivingBullets.push(bullet);
+      }
+    }
+    this.bullets = survivingBullets;
+
+    // 清理已销毁的陨石
+    this.asteroids = this.asteroids.filter((a) => a.size > 0);
   }
 
   private checkLevelUp(): void {
@@ -485,6 +554,10 @@ export class GameEngine {
 
     for (const asteroid of this.asteroids) {
       drawAsteroid(ctx, asteroid);
+    }
+
+    for (const bullet of this.bullets) {
+      drawBullet(ctx, bullet);
     }
 
     for (const coin of this.coins) {

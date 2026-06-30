@@ -1,5 +1,6 @@
 import type {
   Asteroid,
+  Bullet,
   Coin,
   FloatText,
   Nebula,
@@ -107,6 +108,78 @@ export function drawPlayer(
   ctx.lineTo(x + width, y + height);
   ctx.closePath();
   ctx.stroke();
+}
+
+/* ===================== 子弹 ===================== */
+
+/** 创建一颗子弹（从玩家位置发射） */
+export function createBullet(player: Player): Bullet {
+  return {
+    x: player.x + player.width / 2 - GAME_CONFIG.bullet.width / 2,
+    y: player.y - GAME_CONFIG.bullet.height,
+    width: GAME_CONFIG.bullet.width,
+    height: GAME_CONFIG.bullet.height,
+    speed: GAME_CONFIG.bullet.speed,
+  };
+}
+
+/** 绘制子弹（发光激光束） */
+export function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
+  const { x, y, width, height } = bullet;
+  const cx = x + width / 2;
+
+  // 外发光
+  const glow = ctx.createRadialGradient(cx, y + height / 2, 0, cx, y + height / 2, width * 3);
+  glow.addColorStop(0, "rgba(255,200,100,0.4)");
+  glow.addColorStop(1, "rgba(255,200,100,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - width * 3, y - width * 2, width * 6, height + width * 4);
+
+  // 主体
+  const grad = ctx.createLinearGradient(x, y, x, y + height);
+  grad.addColorStop(0, "rgba(255,255,255,0.9)");
+  grad.addColorStop(0.3, "#fbbf24");
+  grad.addColorStop(0.7, "#f97316");
+  grad.addColorStop(1, "rgba(255,255,255,0.3)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, width, height);
+}
+
+/** 陨石被击中后的分裂逻辑：若尺寸大于阈值则分裂为两个小陨石 */
+export function splitAsteroid(
+  asteroid: Asteroid,
+  gameW: number
+): Asteroid[] {
+  const minSplitSize = 28;
+  if (asteroid.size < minSplitSize) return [];
+
+  const newSize = asteroid.size * 0.55;
+  const offset = newSize * 0.5;
+
+  const childA: Asteroid = {
+    id: ++asteroidIdCounter,
+    x: asteroid.x - offset,
+    y: asteroid.y + offset,
+    size: newSize,
+    speed: asteroid.speed * (1 + Math.random() * 0.3),
+    rotation: Math.random() * Math.PI * 2,
+    rotationSpeed: (Math.random() - 0.5) * 0.06,
+    scored: false,
+    vertices: Array.from({ length: 8 }, () => 0.7 + Math.random() * 0.4),
+    palette: asteroid.palette,
+    shapeType: Math.floor(Math.random() * 3),
+    regmaglypts: null,
+  };
+
+  const childB: Asteroid = {
+    ...childA,
+    id: ++asteroidIdCounter,
+    x: asteroid.x + offset,
+    y: asteroid.y + offset,
+    vertices: Array.from({ length: 8 }, () => 0.7 + Math.random() * 0.4),
+  };
+
+  return [childA, childB];
 }
 
 /* ===================== 陨石 ===================== */

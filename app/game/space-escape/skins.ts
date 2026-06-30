@@ -277,6 +277,7 @@ const SKIN_DEFS: SkinDef[] = [
     imageUrl: "/skins/planes/titan-flare.png",
     description: "泰坦工业·橙金核心，双引擎驱动 — 泰坦系列",
     rarity: "legendary",
+    canShoot: true,
     unlockMethods: [
       { type: "fragment", description: "收集 10 个泰坦碎片合成", fragmentId: "titan-shard", fragmentRequired: 10 },
     ],
@@ -292,6 +293,7 @@ const SKIN_DEFS: SkinDef[] = [
     imageUrl: "/skins/planes/titan-blood.png",
     description: "泰坦工业·猩红核心，宽翼突击型 — 泰坦系列",
     rarity: "legendary",
+    canShoot: true,
     unlockMethods: [
       { type: "fragment", description: "收集 15 个泰坦碎片合成", fragmentId: "titan-shard", fragmentRequired: 15 },
     ],
@@ -307,6 +309,7 @@ const SKIN_DEFS: SkinDef[] = [
     imageUrl: "/skins/planes/titan-frost.png",
     description: "泰坦工业·冰蓝核心，高速截击型 — 泰坦系列",
     rarity: "legendary",
+    canShoot: true,
     unlockMethods: [
       { type: "fragment", description: "收集 20 个泰坦碎片合成", fragmentId: "titan-shard", fragmentRequired: 20 },
     ],
@@ -322,6 +325,7 @@ const SKIN_DEFS: SkinDef[] = [
     imageUrl: "/skins/planes/titan-shadow.png",
     description: "泰坦工业·紫色核心，隐匿型战机 — 泰坦系列",
     rarity: "legendary",
+    canShoot: true,
     unlockMethods: [
       { type: "fragment", description: "收集 25 个泰坦碎片合成", fragmentId: "titan-shard", fragmentRequired: 25 },
     ],
@@ -337,6 +341,7 @@ const SKIN_DEFS: SkinDef[] = [
     imageUrl: "/skins/planes/titan-jade.png",
     description: "泰坦工业·翠绿核心，能量护盾型 — 泰坦系列",
     rarity: "legendary",
+    canShoot: true,
     unlockMethods: [
       { type: "fragment", description: "收集 30 个泰坦碎片合成", fragmentId: "titan-shard", fragmentRequired: 30 },
     ],
