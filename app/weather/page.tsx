@@ -11,7 +11,6 @@ import {
   FaWind,
   FaCompass,
   FaEye,
-  FaSpinner,
 } from "react-icons/fa";
 import {
   cityLocationIds,
@@ -53,7 +52,6 @@ export default function WeatherPage() {
   const [history, setHistory] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
-  const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -104,18 +102,20 @@ export default function WeatherPage() {
   }
 
   async function fetchWeatherHefeng(city: string): Promise<WeatherData> {
-    let id = cityLocationIds[city];
+    const locationId = cityLocationIds[city];
     let displayName = city;
 
-    if (!id) {
+    if (!locationId) {
       setLoadingStatus("正在搜索城市...");
       const searchResult = await searchCity(city);
       if (!searchResult) {
         throw new Error(`未找到城市 "${city}"，请尝试其他城市名称`);
       }
       displayName = searchResult.name;
-      id = searchResult.id;
     }
+
+    const id = locationId || (await searchCity(city))?.id;
+    if (!id) throw new Error("无法获取城市 ID");
 
     setLoadingStatus("正在获取实时天气...");
     const nowData = await callWeatherApi("/v7/weather/now", id);
@@ -196,14 +196,11 @@ export default function WeatherPage() {
 
   async function getLocationWeather() {
     if (!navigator.geolocation) {
-      setError({
-        message: "您的浏览器不支持地理定位功能，请手动输入城市查询天气",
-      });
+      alert("您的浏览器不支持地理定位功能，请手动输入城市查询天气");
       return;
     }
 
-    setIsLocating(true);
-    setError(null);
+    setLoading(true);
     setLoadingStatus("正在请求定位权限...");
 
     navigator.geolocation.getCurrentPosition(
@@ -211,6 +208,7 @@ export default function WeatherPage() {
         const { latitude, longitude } = position.coords;
         try {
           setLoadingStatus("正在获取位置信息...");
+          console.log(`📍 获取到位置: 纬度 ${latitude.toFixed(4)}, 经度 ${longitude.toFixed(4)}`);
 
           // 先尝试 API 反向地理编码
           let city: string | null = null;
@@ -223,38 +221,36 @@ export default function WeatherPage() {
               city = data.location[0].name;
             }
           } catch {
-            // API 失败时降级使用预设城市列表
+            console.warn("⚠️ API 反向地理编码失败，使用预设城市列表匹配");
+          }
+
+          // API 失败时降级使用预设城市列表
+          if (!city) {
             city = findNearestCity(latitude, longitude);
           }
 
-          setIsLocating(false);
-
           if (city) {
+            setLoadingStatus(`正在获取 ${city} 的天气...`);
             setSearchValue(city);
             await fetchWeather(city);
           } else {
-            setError({
-              message: "无法根据当前位置获取城市信息，请手动输入城市名称",
-            });
+            throw new Error("无法根据当前位置获取城市信息");
           }
         } catch (err) {
-          setIsLocating(false);
-          setError({
-            message: "根据位置获取天气失败，请手动输入城市查询",
-            details: (err as Error).message,
-          });
+          setLoading(false);
+          alert("根据位置获取天气失败，请手动输入城市查询");
+          fetchWeather("北京");
         }
       },
       (err) => {
-        setIsLocating(false);
+        setLoading(false);
         const errorMessages: Record<number, string> = {
-          1: "定位权限被拒绝，请在浏览器设置中允许定位权限后重试",
-          2: "无法获取位置信息，请检查GPS或网络",
-          3: "定位请求超时，请重试",
+          1: "定位权限被拒绝，请在浏览器设置中允许定位权限",
+          2: "无法获取位置信息",
+          3: "定位请求超时",
         };
-        setError({
-          message: errorMessages[err.code] || "定位失败，请手动输入城市查询",
-        });
+        alert(errorMessages[err.code] || "定位失败，请手动输入城市查询");
+        fetchWeather("北京");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -299,15 +295,10 @@ export default function WeatherPage() {
             />
             <button
               onClick={getLocationWeather}
-              disabled={isLocating}
-              className="absolute right-20 top-1/2 -translate-y-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-full font-medium hover:shadow-lg transition-all hover:scale-105 disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100"
-              title={isLocating ? "正在定位..." : "使用当前位置"}
+              className="absolute right-20 top-1/2 -translate-y-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-full font-medium hover:shadow-lg transition-all hover:scale-105"
+              title="使用当前位置"
             >
-              {isLocating ? (
-                <FaSpinner className="w-5 h-5 animate-spin" />
-              ) : (
-                <FaMapMarkerAlt className="w-5 h-5" />
-              )}
+              <FaMapMarkerAlt className="w-5 h-5" />
             </button>
             <button
               onClick={handleSearch}
@@ -364,10 +355,10 @@ export default function WeatherPage() {
         </div>
 
         {/* 加载状态 */}
-        {(loading || isLocating) && (
+        {loading && (
           <div className="flex flex-col items-center justify-center py-16 text-white">
             <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4" />
-            <p className="text-lg">{isLocating ? "正在定位..." : "正在获取天气数据..."}</p>
+            <p className="text-lg">正在获取天气数据...</p>
             <p className="text-white/60 text-sm mt-2">{loadingStatus}</p>
           </div>
         )}
