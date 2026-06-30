@@ -211,7 +211,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_leaderboard: {
+        Args: {
+          limit_val: number;
+        };
+        Returns: {
+          username: string;
+          score: number;
+        }[];
+      };
     }
     Enums: {
       [_ in never]: never

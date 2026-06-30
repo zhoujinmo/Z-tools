@@ -72,14 +72,10 @@ export async function GET() {
     }
 
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("game_scores")
-      .select("id, username, score, created_at")
-      .order("score", { ascending: false })
-      .limit(200);
+    const { data, error } = await (admin.rpc as any)("get_leaderboard", { limit_val: 20 });
 
     if (error) {
-      console.warn("[scores GET] Supabase query failed, falling back to local", error.message);
+      console.warn("[scores GET] Supabase rpc failed, falling back to local", error.message);
       const local = await readLocalScores();
       return NextResponse.json<ApiResponse<ScoreEntry[]>>({
         success: true,
@@ -87,18 +83,18 @@ export async function GET() {
       });
     }
 
-    const scores: ScoreEntry[] = (
-      (data as unknown as ScoreEntry[]) || []
-    ).map((row) => ({
-      id: row.id,
-      username: row.username,
-      score: row.score,
-      created_at: row.created_at,
-    }));
+    const scores: ScoreEntry[] = ((data as { username: string; score: number }[]) || []).map(
+      (row) => ({
+        id: row.username,
+        username: row.username,
+        score: row.score,
+        created_at: "",
+      })
+    );
 
     return NextResponse.json<ApiResponse<ScoreEntry[]>>({
       success: true,
-      data: aggregateTopPerUser(scores),
+      data: scores,
     });
   } catch (err) {
     console.error("[scores GET]", err);
