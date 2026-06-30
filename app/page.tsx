@@ -19,7 +19,7 @@ export default function HomePage() {
             <div className="w-28 h-28 sm:w-32 sm:h-32 mx-auto rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/avatar.svg"
+                src="/avatar.png"
                 alt="周锦墨"
                 className="w-full h-full object-cover"
               />
