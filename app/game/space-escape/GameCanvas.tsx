@@ -192,16 +192,17 @@ export default function GameCanvas() {
     };
   }, []);
 
-  /** 隐形触摸区域控制（手指位置直接映射飞机坐标，不卡顿） */
+  /** 手指位置直接映射飞机坐标（使用 engine 实时游戏尺寸） */
   const setTouchPosition = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
-    if (!container) return;
+    const engine = engineRef.current;
+    if (!container || !engine) return;
     const rect = container.getBoundingClientRect();
-    const x = (clientX - rect.left) / rect.width;
-    const y = (clientY - rect.top) / rect.height;
-    engineRef.current?.setDirectPosition(
-      x * GAME_CONFIG.width,
-      y * GAME_CONFIG.height,
+    const nx = (clientX - rect.left) / rect.width;
+    const ny = (clientY - rect.top) / rect.height;
+    engine.setDirectPosition(
+      nx * engine.gameWidth,
+      ny * engine.gameHeight,
     );
   }, []);
 

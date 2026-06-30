@@ -32,8 +32,11 @@ import {
 
 export class GameEngine {
   private ctx: CanvasRenderingContext2D;
-  private gameWidth: number;
-  private gameHeight: number;
+  private _gameWidth: number;
+  private _gameHeight: number;
+
+  get gameWidth(): number { return this._gameWidth; }
+  get gameHeight(): number { return this._gameHeight; }
   private player: Player;
   private asteroids: Asteroid[] = [];
   private stars: Star[];
@@ -85,22 +88,22 @@ export class GameEngine {
 
   constructor(ctx: CanvasRenderingContext2D, skin: SkinStyle, width?: number, height?: number) {
     this.ctx = ctx;
-    this.gameWidth = width ?? GAME_CONFIG.width;
-    this.gameHeight = height ?? GAME_CONFIG.height;
+    this._gameWidth = width ?? GAME_CONFIG.width;
+    this._gameHeight = height ?? GAME_CONFIG.height;
     this.skin = skin;
-    this.player = createPlayer(this.gameWidth, this.gameHeight);
-    this.stars = createStars(this.gameWidth, this.gameHeight);
-    this.nebulae = createNebulae(this.gameWidth, this.gameHeight);
+    this.player = createPlayer(this._gameWidth, this._gameHeight);
+    this.stars = createStars(this._gameWidth, this._gameHeight);
+    this.nebulae = createNebulae(this._gameWidth, this._gameHeight);
     this.loadSkinImage(skin.imageUrl);
   }
 
   /** 更新游戏视口尺寸（窗口 resize 时调用） */
   resize(width: number, height: number): void {
-    this.gameWidth = width;
-    this.gameHeight = height;
-    this.player = createPlayer(this.gameWidth, this.gameHeight);
-    this.stars = createStars(this.gameWidth, this.gameHeight);
-    this.nebulae = createNebulae(this.gameWidth, this.gameHeight);
+    this._gameWidth = width;
+    this._gameHeight = height;
+    this.player = createPlayer(this._gameWidth, this._gameHeight);
+    this.stars = createStars(this._gameWidth, this._gameHeight);
+    this.nebulae = createNebulae(this._gameWidth, this._gameHeight);
   }
 
   private loadSkinImage(url: string | undefined): void {
