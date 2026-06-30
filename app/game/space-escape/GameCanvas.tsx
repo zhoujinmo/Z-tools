@@ -192,31 +192,37 @@ export default function GameCanvas() {
     };
   }, []);
 
-  /** 手指位置直接映射飞机坐标（使用 engine 实时游戏尺寸） */
-  const setTouchPosition = useCallback((clientX: number, clientY: number) => {
+  /** 相对拖动锚点：记录触摸起始时的手指位置和飞机位置 */
+  const touchAnchor = useRef<{ fingerX: number; fingerY: number; planeX: number; planeY: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
     const container = containerRef.current;
     const engine = engineRef.current;
     if (!container || !engine) return;
     const rect = container.getBoundingClientRect();
-    const nx = (clientX - rect.left) / rect.width;
-    const ny = (clientY - rect.top) / rect.height;
-    engine.setDirectPosition(
-      nx * engine.gameWidth,
-      ny * engine.gameHeight,
-    );
+    touchAnchor.current = {
+      fingerX: touch.clientX,
+      fingerY: touch.clientY,
+      planeX: engine.playerPos.x,
+      planeY: engine.playerPos.y,
+    };
   }, []);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    setTouchPosition(touch.clientX, touch.clientY);
-  }, [setTouchPosition]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
-    setTouchPosition(touch.clientX, touch.clientY);
-  }, [setTouchPosition]);
+    const container = containerRef.current;
+    const engine = engineRef.current;
+    const anchor = touchAnchor.current;
+    if (!container || !engine || !anchor) return;
+    const rect = container.getBoundingClientRect();
+    const dx = (touch.clientX - anchor.fingerX) / rect.width * engine.gameWidth;
+    const dy = (touch.clientY - anchor.fingerY) / rect.height * engine.gameHeight;
+    engine.setDirectPosition(anchor.planeX + dx, anchor.planeY + dy);
+  }, []);
 
   const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+    touchAnchor.current = null;
     engineRef.current?.clearDirectPosition();
   }, []);
 
